@@ -1,5 +1,7 @@
 // Vercel Serverless Function: lee un programa (PDF o texto dictado) con Claude y devuelve el ramo en JSON.
-// Variables de entorno en Vercel: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY
+// Variables de entorno en Vercel: SUPABASE_URL, SUPABASE_ANON_KEY y UNA de estas:
+//   GEMINI_API_KEY    (gratis, de aistudio.google.com)  <- se usa primero si existe
+//   ANTHROPIC_API_KEY (de pago, de console.anthropic.com)
 // Solo usuarios con sesión iniciada pueden usarla (se verifica el token de Supabase).
 
 const PROMPT = `Eres un asistente que convierte el programa de un ramo universitario chileno (escala de notas 1,0 a 7,0; se aprueba con 3,95) en JSON para una calculadora de notas.
@@ -22,6 +24,21 @@ Reglas:
 - Escribe en español.`;
 
 const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-5-5';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+
+async function conGemini(body) {
+  const parts = [];
+  if (body.tipo === 'pdf' && body.data) parts.push({ inline_data: { mime_type: 'application/pdf', data: body.data } }, { text: PROMPT + '\n\nEl programa es el PDF adjunto.' });
+  else parts.push({ text: PROMPT + '\n\n<programa>\n' + String(body.texto || body.textoPdf || '').slice(0, 60000) + '\n</programa>' });
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } })
+  });
+  const j = await r.json();
+  if (r.status === 429) throw new Error('Se alcanzó el límite gratuito de la IA por ahora. Espera un rato o crea el ramo a mano.');
+  if (!r.ok) throw new Error('La IA no respondió: ' + (j.error?.message || r.status));
+  return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Usa POST' });
@@ -32,8 +49,21 @@ export default async function handler(req, res) {
     const u = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY } });
     if (!u.ok) return res.status(401).json({ error: 'Tu sesión expiró. Vuelve a entrar.' });
 
-    // 2) Armar el mensaje para Claude
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    if (!(body.tipo === 'pdf' && body.data) && String(body.texto || body.textoPdf || '').trim().length < 20) return res.status(400).json({ error: 'Falta el texto del programa.' });
+
+    // 2a) Gemini (gratis) si hay key
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const txt = await conGemini(body);
+        const m = txt.match(/\{[\s\S]*\}/);
+        if (!m) return res.status(502).json({ error: 'La IA no devolvió un ramo válido. Prueba de nuevo o hazlo a mano.' });
+        return res.status(200).json({ ramo: JSON.parse(m[0]) });
+      } catch (e) { return res.status(502).json({ error: e.message }); }
+    }
+    if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'Falta configurar la IA (GEMINI_API_KEY en Vercel).' });
+
+    // 2b) Claude (de pago)
     const content = [];
     if (body.tipo === 'pdf' && body.data) {
       content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: body.data } });
