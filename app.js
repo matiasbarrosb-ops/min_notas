@@ -82,9 +82,11 @@ const api = {
     MIS = MIS.filter(m => m.ramo_id !== ramo_id); if (MODE === 'demo') { demo.st.mis = MIS; demo.save(); }
   },
   _t: {},
+  _f: {},
+  flush() { Object.keys(this._f).forEach(k => { clearTimeout(this._t[k]); const f = this._f[k]; delete this._f[k]; f(); }); },
   guardar(ramo_id) { // con debounce
     clearTimeout(this._t[ramo_id]);
-    this._t[ramo_id] = setTimeout(async () => {
+    const run = this._f[ramo_id] = async () => { delete this._f[ramo_id];
       const m = MIS.find(x => x.ramo_id === ramo_id); if (!m) return;
       if (MODE === 'cloud') {
         guardarCache();
@@ -92,7 +94,8 @@ const api = {
         catch (e) { PEND.add(ramo_id); if (!navigator.onLine) { OFFLINE = true; drawHeader(); } else toast('No se pudo guardar: ' + e.message); }
       }
       else demo.save();
-    }, 500);
+    };
+    this._t[ramo_id] = setTimeout(run, 500);
   },
   async crearRamo(r) {
     if (MODE === 'cloud') {
@@ -228,7 +231,27 @@ function compute(r, fill, noExim) {
 }
 const actual = r => compute(r, () => null);
 function supuesto(r) { const o = O(r.id); if (o.sup != null) return o.sup; const a = actual(r).final; return a != null ? Math.round(a * 10) / 10 : 4.0; }
-function proyeccion(r, exNota, noExim) { const sup = supuesto(r), ex = examItem(r); return compute(r, it => ex && it === ex.it ? exNota : sup, noExim).final; }
+/* Simulador: una barra por evaluación pendiente (o por grupo si un grupo tiene varias pendientes) */
+function simUnidades(r) {
+  const o = O(r.id), padre = new Map();
+  nodos(r.raiz).forEach(n => { if (esGrupo(n)) n.hijos.forEach(h => padre.set(h, n)); });
+  const pend = hojas(r.raiz).filter(h => !h.examen && getG(r.id, h.id) == null && !(h.reemplazable && o['just_' + h.id]));
+  const porGrupo = new Map(); pend.forEach(h => { const p = padre.get(h); if (p && p !== r.raiz) porGrupo.set(p, (porGrupo.get(p) || 0) + 1); });
+  const units = [], vistos = new Set();
+  pend.forEach(h => {
+    const p = padre.get(h);
+    if (p && p !== r.raiz && porGrupo.get(p) >= 2) {
+      if (vistos.has(p)) return; vistos.add(p);
+      const hs = pend.filter(x => padre.get(x) === p);
+      units.push({ id: 'g_' + p.id, nombre: p.nombre, n: hs.length, hojas: hs });
+    } else units.push({ id: h.id, nombre: h.nombre, n: 1, hojas: [h], fecha: h.fecha });
+  });
+  return units;
+}
+const simBase = r => supuesto(r);
+function simMapa(r) { const o = O(r.id), m = new Map(), base = simBase(r); simUnidades(r).forEach(u => { const v = o.sim && o.sim[u.id] != null ? o.sim[u.id] : base; u.hojas.forEach(h => m.set(h, v)); }); return m; }
+function simFill(r) { const m = simMapa(r), base = simBase(r); return it => m.has(it) ? m.get(it) : base; }
+function proyeccion(r, exNota, noExim) { const f = simFill(r), ex = examItem(r); return compute(r, it => ex && it === ex.it ? exNota : f(it), noExim).final; }
 function resolver(f, meta) { // menor nota (1 decimal) x en [1,7] con f(x) >= meta
   if (f(1) >= meta - 1e-9) return { tipo: 'ya', val: 1 };
   if (f(7) < meta - 1e-9) return { tipo: 'imposible', max: f(7) };
@@ -239,7 +262,7 @@ function resolver(f, meta) { // menor nota (1 decimal) x en [1,7] con f(x) >= me
 function necesaria(r, meta) {
   const ex = examItem(r); if (!ex) return { tipo: 'sinexamen' };
   if (getG(r.id, ex.it.id) != null) return { tipo: 'rendido' };
-  { const sup = supuesto(r), c = compute(r, it => it === ex.it ? 1 : sup); if (c.eximido && c.final >= meta - 1e-9) return { tipo: 'eximido', np: c.final }; }
+  { const f = simFill(r), c = compute(r, it => it === ex.it ? 1 : f(it)); if (c.eximido && c.final >= meta - 1e-9) return { tipo: 'eximido', np: c.final }; }
   return resolver(x => proyeccion(r, x), meta);
 }
 function paraEximir(r) {
@@ -271,7 +294,7 @@ function estado(r) {
 }
 function msgNec(n, meta, r) {
   const res = r ? actual(r) : null;
-  if (r && res.final == null) return { num: '—', msg: 'Ingresa tus notas para calcular cuánto necesitas.' };
+  if (r && res.final == null && !Object.keys(O(r.id).sim || {}).length) return { num: '—', msg: 'Ingresa tus notas, o mueve las barras del simulador, para calcular cuánto necesitas.' };
   if (r && n.tipo === 'imposible') { const f = nodos(r.raiz).find(x => x.minimo != null && !hojas(x).some(h => h.examen) && res.vals.get(x)?.v != null && res.vals.get(x).v < x.minimo && res.vals.get(x).comp); if (f) return { num: '✕', msg: `${esc(f.nombre)} está en ${fmt(res.vals.get(f).v)} y necesita ≥ ${fmt2(f.minimo)} por separado.` }; }
   if (n.tipo === 'sinexamen') {
     const q = necesariaResto(r, meta);
@@ -410,20 +433,18 @@ function renderRamo(r) {
       <div class="note">Escribe notas de 1,0 a 7,0 (también sirve "45" para 4,5). Se guardan solas.</div></div>
       <div class="card a-res">
         <div class="result-big"><div style="font-size:12.5px;color:var(--muted);font-weight:500">${exA ? 'Nota necesaria en el examen' : (necesariaResto(r, meta) ? 'Necesitas en lo que falta' : 'Nota final')}</div>
-          <div class="num">${m.num}</div><div class="msg">${m.msg}</div>
+          <div class="num" id="resNum">${m.num}</div><div class="msg" id="resMsg">${m.msg}</div>
           ${ex ? `<div class="msg" style="border-top:1px solid var(--line);padding-top:6px;margin-top:4px">${ex.imposible ? 'Ya no alcanza la eximición.' : `Para eximirte necesitas promedio <b>${fmt(ex.val)}</b> en ${ex.n === 1 ? 'la evaluación' : 'las ' + ex.n + ' evaluaciones'} que faltan de la nota de presentación.`}</div>` : ''}</div>
         <div class="stats" style="margin-top:12px">
           <div class="stat"><div class="lbl">Promedio actual</div><div class="val">${fmt(res.final)}</div></div>
-          <div class="stat"><div class="lbl">Nota final proyectada</div><div class="val">${res.final == null ? '—' : fmt(exA && getG(r.id, exA.it.id) == null && n.tipo === 'ok' ? proyeccion(r, n.val) : compute(r, () => supuesto(r)).final)}</div></div></div>
+          <div class="stat"><div class="lbl">Nota final proyectada</div><div class="val" id="resProy">${proyTxt(r, n)}</div></div></div>
         <div class="ctrl"><label>Quiero terminar con</label>
           <div class="seg">${[APROB, 5, 5.5, 6].map(v => `<button class="${Math.abs(meta - v) < 1e-9 ? 'on' : ''}" onclick="setOpt('${r.id}','meta',${v})">${v === APROB ? 'Aprobar' : fmt(v)}</button>`).join('')}</div></div>
-        <div class="ctrl"><label for="sup">Para lo que falta (sin nota aún), supongo un <b id="supv">${fmt(supuesto(r))}</b></label>
-          <input id="sup" type="range" min="1" max="7" step=".1" value="${supuesto(r)}" oninput="$('supv').textContent=fmtG(+this.value)" onchange="setOpt('${r.id}','sup',+this.value)">
-          <div class="note">Por defecto es tu promedio actual. ${o.sup != null ? `<a href="#" onclick="setOpt('${r.id}','sup',null);return false">Volver al promedio</a>` : ''}</div></div>
+        ${simHTML(r)}
       </div>
     <div class="a-extra">
       <div class="card chart-card"><h3>Tus notas</h3><div class="sub">Cada evaluación con nota. Línea: 3,95.</div><div id="chNotas"></div></div>
-      ${exA ? `<div class="card chart-card"><h3>¿Cómo termino según el examen?</h3><div class="sub">Nota final si rindes el examen, según lo que te saques (lo demás que falte = ${fmt(supuesto(r))}).</div><div id="chCurva"></div></div>` : ''}
+      ${exA ? `<div class="card chart-card"><h3>¿Cómo termino según el examen?</h3><div class="sub">Nota final según lo que te saques en el examen, con lo que pusiste en el simulador.</div><div id="chCurva"></div></div>` : ''}
       <div class="card"><h3 style="margin:0 0 6px;font-size:14px">Reglas del ramo</h3><ul class="rules">${(r.reglas || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Sin reglas registradas.</li>'}</ul>
         <div class="note">Fuente: ${esc(r.fuente || '—')}${r.creado_por ? ' · agregado por la comunidad' : ''}</div></div>
     </div></div>`;
@@ -432,6 +453,38 @@ function renderRamo(r) {
   if (exA) { const xs = []; for (let x = 10; x <= 70; x++) xs.push({ x: x / 10, y: proyeccion(r, x / 10, true) }); lineChart($('chCurva'), xs, { ref: meta, mark: n.tipo === 'ok' ? n.val : null }); }
 }
 window.fmtG = fmt;
+function proyTxt(r, n) {
+  if (actual(r).final == null && !Object.keys(O(r.id).sim || {}).length) return '—';
+  const exA = examItem(r);
+  return fmt(exA && getG(r.id, exA.it.id) == null && n.tipo === 'ok' ? proyeccion(r, n.val) : compute(r, simFill(r)).final);
+}
+let SIM_TODO = false;
+function simHTML(r) {
+  const us = simUnidades(r); if (!us.length) return '';
+  const o = O(r.id), base = simBase(r), max = 5, vis = SIM_TODO ? us : us.slice(0, max);
+  const exA = examItem(r), exPend = exA && getG(r.id, exA.it.id) == null;
+  return `<div class="sim">
+    <div class="sim-h"><div><b>Simula lo que te falta</b><div class="note" style="margin:0">Mueve cada barra a la nota que crees que te sacarás${exPend ? '; arriba ves cuánto necesitas en el examen' : ''}.</div></div>
+      ${o.sim && Object.keys(o.sim).length ? `<button class="btn ghost sm" onclick="simReset('${r.id}')">Restablecer</button>` : ''}</div>
+    ${vis.map(u => { const v = o.sim && o.sim[u.id] != null ? o.sim[u.id] : base; return `<div class="sim-row">
+      <div class="sim-n" title="${esc(u.nombre)}">${esc(u.nombre)}${u.n > 1 ? `<span class="sim-c">${u.n} pendientes · promedio</span>` : u.fecha ? `<span class="sim-c">${fdate(u.fecha)}</span>` : ''}</div>
+      <input type="range" min="1" max="7" step="0.1" value="${v}" aria-label="Nota simulada ${esc(u.nombre)}" oninput="simMover('${r.id}','${esc(u.id)}',this)" onchange="simGuardar('${r.id}')" style="--p:${(v - 1) / 6 * 100}%">
+      <b class="sim-v ${v < APROB ? 'rojo' : ''}" id="sv_${esc(u.id)}">${fmt(v)}</b></div>`; }).join('')}
+    ${us.length > max ? `<button class="btn ghost sm" onclick="SIM_TOGGLE()">${SIM_TODO ? 'Mostrar menos' : 'Mostrar ' + (us.length - max) + ' más'}</button>` : ''}
+    ${!exPend ? `<div class="sim-fin">Con estas notas terminas con <b id="simFin">${fmt(compute(r, simFill(r)).final)}</b></div>` : ''}
+  </div>`;
+}
+window.SIM_TOGGLE = () => { SIM_TODO = !SIM_TODO; keepScroll(render); };
+window.simMover = (rid, uidU, el) => {
+  const o = O(rid); o.sim = o.sim || {}; const v = Math.round(+el.value * 10) / 10; o.sim[uidU] = v;
+  el.style.setProperty('--p', (v - 1) / 6 * 100 + '%');
+  const lab = $('sv_' + uidU); if (lab) { lab.textContent = fmt(v); lab.classList.toggle('rojo', v < APROB); }
+  const r = ramo(rid), meta = o.meta || APROB, n = necesaria(r, meta), m = msgNec(n, meta, r);
+  const num = $('resNum'), msg = $('resMsg'), pr = $('resProy'), fin = $('simFin');
+  if (num) num.textContent = m.num; if (msg) msg.innerHTML = m.msg; if (pr) pr.textContent = proyTxt(r, n); if (fin) fin.textContent = fmt(compute(r, simFill(r)).final);
+};
+window.simGuardar = rid => { api.guardar(rid); keepScroll(render); };
+window.simReset = rid => { delete O(rid).sim; api.guardar(rid); keepScroll(render); };
 const corto = s => s.replace(/Interrogaci[oó]n /i, 'I').replace(/Control (escrito )?/i, 'C').replace(/^Examen.*/i, 'Ex').replace(/Prueba /i, 'P').replace(/Seminario /i, 'S').replace(/\s*\(.*\)/, '');
 function arbolHTML(r, res) {
   const ef = efectivos(r.raiz); let rows = '';
@@ -881,5 +934,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   let recargado = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (recargado) return; recargado = true; toast('App actualizada'); });
 }
+addEventListener('pagehide', () => api.flush());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') api.flush(); });
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => USER && render(), 150); });
 (async () => { try { await api.init(); } catch (e) { MODE = 'demo'; demo.load(); USER = { id: 'demo' }; } boot(); })();

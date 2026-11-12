@@ -2,7 +2,7 @@
 // Archivos propios: primero red (para tener siempre la última versión) y, si no hay internet, la copia guardada.
 // Librerías externas (Supabase JS, fuentes, pdf.js): copia guardada primero.
 // Nunca guarda datos de Supabase ni de /api.
-const VERSION = 'misnotas-v1';
+const VERSION = 'misnotas-v2';
 const SHELL = ['/', '/index.html', '/app.js', '/config.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
