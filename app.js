@@ -24,6 +24,11 @@ let MODE = (CFG.supabaseUrl && CFG.supabaseAnonKey) ? 'cloud' : 'demo';
 let sb = null, USER = null;
 let CATALOGO = [];      // [{id,sigla,nombre,universidad,periodo,carrera,fuente,def,creado_por,created_at}]
 let MIS = [];           // [{ramo_id,notas,opts,override}]
+let OFFLINE = false;
+const cacheKey = () => 'notasapp.cache.' + (USER?.id || 'x');
+function guardarCache() { if (MODE !== 'cloud') return; try { localStorage.setItem(cacheKey(), JSON.stringify({ CATALOGO, MIS, t: Date.now() })); } catch (e) { } }
+function leerCache() { try { return JSON.parse(localStorage.getItem(cacheKey()) || 'null'); } catch (e) { return null; } }
+const PEND = new Set(); // ramos con cambios sin guardar (sin conexión)
 
 const demo = {
   key: 'notasapp.demo.v1',
@@ -81,7 +86,11 @@ const api = {
     clearTimeout(this._t[ramo_id]);
     this._t[ramo_id] = setTimeout(async () => {
       const m = MIS.find(x => x.ramo_id === ramo_id); if (!m) return;
-      if (MODE === 'cloud') { const { error } = await sb.from('inscripciones').update({ notas: m.notas, opts: m.opts, override: m.override }).eq('ramo_id', ramo_id).eq('user_id', USER.id); if (error) toast('No se pudo guardar: ' + error.message); }
+      if (MODE === 'cloud') {
+        guardarCache();
+        try { const { error } = await sb.from('inscripciones').update({ notas: m.notas, opts: m.opts, override: m.override }).eq('ramo_id', ramo_id).eq('user_id', USER.id); if (error) throw error; PEND.delete(ramo_id); }
+        catch (e) { PEND.add(ramo_id); if (!navigator.onLine) { OFFLINE = true; drawHeader(); } else toast('No se pudo guardar: ' + e.message); }
+      }
       else demo.save();
     }, 500);
   },
@@ -262,18 +271,20 @@ const app = $('app');
 window.go = h => { if (location.hash.slice(1) === h) render(); else location.hash = h || ''; if (!h) render(); };
 window.addEventListener('hashchange', render);
 function render() {
+  const tb = $('tbHome'); if (tb) tb.classList.toggle('on', !location.hash.slice(1));
   if (!USER) return renderLogin();
   const h = location.hash.slice(1);
   const m = MIS.find(x => 'ramo-' + x.ramo_id === h);
   m && ramo(m.ramo_id) ? renderRamo(ramo(m.ramo_id)) : renderHome();
 }
 function drawHeader() {
-  $('hdr').innerHTML = USER ? `<button class="btn primary" onclick="openCatalogo()">＋ Agregar ramo</button>
+  $('hdr').innerHTML = USER ? `<button class="btn primary hide-m" onclick="openCatalogo()">＋ Agregar ramo</button>
     ${MODE === 'cloud' ? `<button class="btn ghost" onclick="salir()" title="${esc(USER.email)}">Salir</button>` : ''}
-    <button class="btn" onclick="toggleTheme()">Tema</button>` : `<button class="btn" onclick="toggleTheme()">Tema</button>`;
-  $('banner').innerHTML = MODE === 'demo' ? `<div class="banner"><b>Modo demo:</b> tus ramos y notas se guardan solo en este navegador. Cuando la página esté en Vercel + Supabase, cada persona tendrá su cuenta y el catálogo será compartido.</div>` : '';
+    <button class="btn hide-m" onclick="toggleTheme()">Tema</button>` : `<button class="btn" onclick="toggleTheme()">Tema</button>`;
+  $('tabbar').style.visibility = USER ? 'visible' : 'hidden';
+  $('banner').innerHTML = (OFFLINE ? `<div class="offline">Sin conexión: estás viendo tus últimas notas guardadas. Lo que cambies se guardará cuando vuelva internet.</div>` : '') + installHTML() + (MODE === 'demo' ? `<div class="banner"><b>Modo demo:</b> tus ramos y notas se guardan solo en este navegador. Cuando la página esté en Vercel + Supabase, cada persona tendrá su cuenta y el catálogo será compartido.</div>` : '');
 }
-window.toggleTheme = () => { const d = document.documentElement; const cur = d.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); d.dataset.theme = cur === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('notasapp.theme', d.dataset.theme); } catch (e) { } render(); };
+window.toggleTheme = () => { const d = document.documentElement; const cur = d.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); d.dataset.theme = cur === 'dark' ? 'light' : 'dark'; pintarBarra(); try { localStorage.setItem('notasapp.theme', d.dataset.theme); } catch (e) { } render(); };
 window.salir = async () => { await api.logout(); };
 
 /* ============================================================ LOGIN */
@@ -360,7 +371,7 @@ function renderRamo(r) {
   const o = O(r.id), meta = o.meta || APROB;
   const res = actual(r), n = necesaria(r, meta), m = msgNec(n, meta, r), e = estado(r), exA = examItem(r), ex = paraEximir(r);
   app.innerHTML = `
-  <button class="btn ghost" style="margin-bottom:12px" onclick="go('')">← Mis ramos</button>
+  <button class="btn ghost back-btn" style="margin-bottom:12px" onclick="go('')">← Mis ramos</button>
   <div class="detail-head">
     <div><div class="sigla">${esc(r.sigla)}${r.periodo ? ' · ' + esc(r.periodo) : ''}</div><h2>${esc(r.nombre)}</h2><span class="pill ${e.cls}">${e.ic} ${e.txt}</span></div>
     <div class="row"><button class="btn" onclick="toggleEdit()">${EDIT ? 'Listo' : 'Editar ponderaciones'}</button>
@@ -369,11 +380,10 @@ function renderRamo(r) {
   </div>
   ${r.dudas && r.dudas.length ? `<div class="warnbox"><b>Por confirmar:</b> ${r.dudas.map(esc).join(' · ')}</div>` : ''}
   ${r.editado ? `<div class="infobox">Estás usando tus propias ponderaciones para este ramo. <a href="#" onclick="restaurar('${r.id}');return false">Volver a las del catálogo</a></div>` : ''}
-  <div class="two">
-    <div class="card">${r.partes.map(p => parteHTML(r, p, res)).join('')}
+  <div class="det">
+    <div class="card a-tabla">${r.partes.map(p => parteHTML(r, p, res)).join('')}
       <div class="note">Escribe notas de 1,0 a 7,0 (también sirve "45" para 4,5). Se guardan solas.</div></div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="card">
+      <div class="card a-res">
         <div class="result-big"><div style="font-size:12.5px;color:var(--muted);font-weight:500">${exA ? 'Nota necesaria en el examen' : (necesariaResto(r, meta) ? 'Necesitas en lo que falta' : 'Nota final')}</div>
           <div class="num">${m.num}</div><div class="msg">${m.msg}</div>
           ${ex ? `<div class="msg" style="border-top:1px solid var(--line);padding-top:6px;margin-top:4px">${ex.imposible ? 'Ya no alcanza la eximición.' : `Para eximirte necesitas promedio <b>${fmt(ex.val)}</b> en ${ex.n === 1 ? 'la evaluación' : 'las ' + ex.n + ' evaluaciones'} que faltan de la nota de presentación.`}</div>` : ''}</div>
@@ -386,6 +396,7 @@ function renderRamo(r) {
           <input id="sup" type="range" min="1" max="7" step=".1" value="${supuesto(r)}" oninput="$('supv').textContent=fmtG(+this.value)" onchange="setOpt('${r.id}','sup',+this.value)">
           <div class="note">Por defecto es tu promedio actual. ${o.sup != null ? `<a href="#" onclick="setOpt('${r.id}','sup',null);return false">Volver al promedio</a>` : ''}</div></div>
       </div>
+    <div class="a-extra">
       <div class="card chart-card"><h3>Tus notas</h3><div class="sub">Cada evaluación con nota. Línea: 3,95.</div><div id="chNotas"></div></div>
       ${exA ? `<div class="card chart-card"><h3>¿Cómo termino según el examen?</h3><div class="sub">Nota final si rindes el examen, según lo que te saques (lo demás que falte = ${fmt(supuesto(r))}).</div><div id="chCurva"></div></div>` : ''}
       <div class="card"><h3 style="margin:0 0 6px;font-size:14px">Reglas del ramo</h3><ul class="rules">${(r.reglas || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Sin reglas registradas.</li>'}</ul>
@@ -439,7 +450,7 @@ function confirmar(k, msg) { if (confirmar.k === k && Date.now() - confirmar.t <
 
 /* ============================================================ GRÁFICOS */
 const tip = $('tip');
-function showTip(e, html) { tip.innerHTML = html; tip.style.opacity = 1; tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = (e.clientY - 34) + 'px'; }
+function showTip(e, html) { tip.innerHTML = html; tip.style.opacity = 1; tip.style.left = Math.max(8, Math.min(e.clientX - tip.offsetWidth / 2, innerWidth - tip.offsetWidth - 8)) + 'px'; tip.style.top = Math.max(8, e.clientY - 48) + 'px'; }
 const hideTip = () => tip.style.opacity = 0;
 function barChart(el, data, { ref }) {
   const W = Math.max(el.clientWidth, 280), H = 200, pl = 30, pr = 8, pt = 12, pb = 26, iw = W - pl - pr, ih = H - pt - pb;
@@ -454,7 +465,7 @@ function barChart(el, data, { ref }) {
   });
   if (ref != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${y(ref)}" y2="${y(ref)}" stroke="var(--ref)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
   el.innerHTML = s + '</svg>';
-  el.querySelectorAll('rect[data-i]').forEach(rc => { const d = data[+rc.dataset.i]; rc.addEventListener('mousemove', e => showTip(e, `${esc(d.full)}: <b>${fmt(d.v)}</b>`)); rc.addEventListener('mouseleave', hideTip); });
+  el.querySelectorAll('rect[data-i]').forEach(rc => { const d = data[+rc.dataset.i]; const f = e => showTip(e.touches ? e.touches[0] : e, `${esc(d.full)}: <b>${fmt(d.v)}</b>`); rc.addEventListener('mousemove', f); rc.addEventListener('mouseleave', hideTip); rc.addEventListener('touchstart', e => { f(e); clearTimeout(hideTip._t); hideTip._t = setTimeout(hideTip, 1800); }, { passive: true }); });
 }
 function lineChart(el, pts, { ref, mark }) {
   const W = Math.max(el.clientWidth, 280), H = 190, pl = 30, pr = 10, pt = 10, pb = 28, iw = W - pl - pr, ih = H - pt - pb;
@@ -469,9 +480,11 @@ function lineChart(el, pts, { ref, mark }) {
   s += `<line class="cr" x1="0" x2="0" y1="${pt}" y2="${pt + ih}" stroke="var(--muted)" opacity="0"/><circle class="dt" r="4" fill="var(--series)" stroke="var(--surface)" stroke-width="2" opacity="0"/><rect class="hit" x="${pl}" y="${pt}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
   el.innerHTML = s;
   const hit = el.querySelector('.hit'), cr = el.querySelector('.cr'), dt = el.querySelector('.dt');
-  hit.addEventListener('mousemove', e => { const b = hit.getBoundingClientRect(); const xv = Math.round((1 + (e.clientX - b.left) / b.width * 6) * 10) / 10; const p = v.reduce((a, c) => Math.abs(c.x - xv) < Math.abs(a.x - xv) ? c : a);
-    cr.setAttribute('x1', x(p.x)); cr.setAttribute('x2', x(p.x)); cr.setAttribute('opacity', 1); dt.setAttribute('cx', x(p.x)); dt.setAttribute('cy', y(p.y)); dt.setAttribute('opacity', 1); showTip(e, `Examen ${fmt(p.x)} → final <b>${fmt(p.y)}</b>`); });
-  hit.addEventListener('mouseleave', () => { hideTip(); cr.setAttribute('opacity', 0); dt.setAttribute('opacity', 0); });
+  const mover = e => { if (e.touches) e = e.touches[0]; const b = hit.getBoundingClientRect(); const xv = Math.round((1 + (e.clientX - b.left) / b.width * 6) * 10) / 10; const p = v.reduce((a, c) => Math.abs(c.x - xv) < Math.abs(a.x - xv) ? c : a);
+    cr.setAttribute('x1', x(p.x)); cr.setAttribute('x2', x(p.x)); cr.setAttribute('opacity', 1); dt.setAttribute('cx', x(p.x)); dt.setAttribute('cy', y(p.y)); dt.setAttribute('opacity', 1); showTip(e, `Examen ${fmt(p.x)} → final <b>${fmt(p.y)}</b>`); };
+  const salir = () => { hideTip(); cr.setAttribute('opacity', 0); dt.setAttribute('opacity', 0); };
+  hit.addEventListener('mousemove', mover); hit.addEventListener('mouseleave', salir);
+  hit.addEventListener('touchstart', mover, { passive: true }); hit.addEventListener('touchmove', mover, { passive: true }); hit.addEventListener('touchend', () => setTimeout(salir, 1500));
 }
 
 /* ============================================================ MODAL */
@@ -688,12 +701,44 @@ function detenerDictado() { if (REC) { try { REC.stop(); } catch (e) { } } }
 
 /* ============================================================ ARRANQUE */
 try { const t = localStorage.getItem('notasapp.theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { }
+if (document.documentElement.dataset.theme) pintarBarra();
 async function boot() {
   drawHeader();
   if (!USER) return render();
-  try { await api.loadCatalogo(); await api.loadMis(); }
-  catch (e) { app.innerHTML = `<div class="errbox">No se pudieron cargar los datos: ${esc(e.message)}</div>`; return; }
+  try { await api.loadCatalogo(); await api.loadMis(); OFFLINE = false; guardarCache(); }
+  catch (e) {
+    const c = leerCache();
+    if (c) { CATALOGO = c.CATALOGO; MIS = c.MIS; OFFLINE = true; }
+    else { app.innerHTML = `<div class="errbox">No se pudieron cargar los datos${navigator.onLine ? ': ' + esc(e.message) : '. Revisa tu conexión a internet.'}</div>`; return; }
+  }
   drawHeader(); render();
+}
+/* ============================================================ APP INSTALABLE */
+const esStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let promptInstalar = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); promptInstalar = e; drawHeader(); });
+addEventListener('appinstalled', () => { promptInstalar = null; drawHeader(); toast('App instalada'); });
+function installHTML() {
+  if (esStandalone() || matchMedia('(min-width: 761px)').matches) return '';
+  try { if (localStorage.getItem('notasapp.noinstall')) return ''; } catch (e) { }
+  const cerrar = `<button class="btn ghost sm" onclick="try{localStorage.setItem('notasapp.noinstall',1)}catch(e){};drawHeader()" aria-label="Ocultar">✕</button>`;
+  if (promptInstalar) return `<div class="install"><span>📲 Instala Mis Notas en tu celular</span><span class="row"><button class="btn primary sm" onclick="instalar()">Instalar</button>${cerrar}</span></div>`;
+  if (esIOS()) return `<div class="install"><span>📲 Para instalarla: toca <b>Compartir</b> ⬆️ y luego <b>"Agregar a inicio"</b>.</span>${cerrar}</div>`;
+  return '';
+}
+window.drawHeader = () => drawHeader();
+window.instalar = async () => { if (!promptInstalar) return; promptInstalar.prompt(); await promptInstalar.userChoice; promptInstalar = null; drawHeader(); };
+function pintarBarra() {
+  const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#121211' : '#f4f3ef'); m.removeAttribute('media'); });
+}
+addEventListener('online', async () => { if (MODE !== 'cloud') return; OFFLINE = false; for (const id of [...PEND]) api.guardar(id); try { await api.loadCatalogo(); guardarCache(); } catch (e) { } drawHeader(); });
+addEventListener('offline', () => { if (MODE === 'cloud') { OFFLINE = true; drawHeader(); } });
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('/sw.js').catch(() => { });
+  let recargado = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (recargado) return; recargado = true; toast('App actualizada'); });
 }
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => USER && render(), 150); });
 (async () => { try { await api.init(); } catch (e) { MODE = 'demo'; demo.load(); USER = { id: 'demo' }; } boot(); })();

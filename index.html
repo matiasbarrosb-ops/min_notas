@@ -2,7 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mis Notas">
+<meta name="description" content="Tus ramos, tus notas y cuánto necesitas en el examen.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
 <title>Mis Notas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -24,7 +34,7 @@ a{color:var(--accent)}
 .wrap{max-width:1080px;margin:0 auto;padding:20px 18px 60px}
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .brand{display:flex;align-items:center;gap:10px;cursor:pointer}
-.logo{width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700}
+.logo{width:34px;height:34px;border-radius:10px;display:block}
 .brand h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
 .brand small{display:block;color:var(--muted);font-size:12.5px;font-weight:500}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 13px;cursor:pointer;font-weight:500;font-size:14px}
@@ -121,13 +131,50 @@ svg text{font-family:inherit}svg{max-width:100%;display:block}
 .login{max-width:420px;margin:60px auto}
 .banner{font-size:12.5px;color:var(--text-2);background:var(--surface-2);border-radius:10px;padding:8px 12px;margin-bottom:14px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:14px;z-index:90;opacity:0;transition:opacity .2s;pointer-events:none}
+
+/* ===== App instalada / celular ===== */
+html{-webkit-text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+.wrap{padding-top:calc(20px + env(safe-area-inset-top))}
+button,.btn,.seg button,.tabs button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.tabbar{display:none}
+.det{display:grid;grid-template-columns:1.25fr 1fr;grid-template-areas:"tabla res" "tabla extra";gap:14px;align-items:start}
+.det>*{min-width:0}.det .a-res{grid-area:res}.det .a-tabla{grid-area:tabla}.det .a-extra{grid-area:extra;display:flex;flex-direction:column;gap:14px}
+.install{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--accent-soft);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:13.5px}
+.offline{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+@media (max-width:760px){
+  .wrap{padding:calc(12px + env(safe-area-inset-top)) 12px calc(96px + env(safe-area-inset-bottom))}
+  header.top{margin-bottom:12px}
+  #hdr .hide-m{display:none}
+  .det{grid-template-columns:1fr;grid-template-areas:"res" "tabla" "extra"}
+  input,select,textarea,.inp,.field input,.field textarea{font-size:16px!important}
+  input.g{width:74px;height:42px;font-size:17px!important}
+  input.wt{font-size:16px!important;width:60px}
+  .btn{min-height:40px}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 10px calc(6px + env(safe-area-inset-bottom));justify-content:space-around;align-items:center}
+  .tabbar button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 0;cursor:pointer}
+  .tabbar button .ic{font-size:21px;line-height:1}
+  .tabbar button.on{color:var(--accent)}
+  .tabbar button.add .ic{width:44px;height:44px;border-radius:14px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:24px;margin-top:-18px;box-shadow:0 4px 14px rgba(42,120,214,.35)}
+  .modal-bg{align-items:flex-end;padding:0}
+  .modal{border-radius:18px 18px 0 0;max-height:92vh;overflow:auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom));animation:sube .22s ease-out}
+  .cat-list{max-height:none}
+  .overview{gap:8px}.overview .card{padding:11px 12px}.overview .val{font-size:22px}
+  .result-big .num{font-size:52px}
+  .detail-head{margin-bottom:10px}.detail-head h2{font-size:22px}
+  .detail-head .row{gap:4px}.detail-head .row .btn{min-height:34px;padding:5px 10px;font-size:13px}
+  .back-btn{display:none}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+}
+@keyframes sube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@media (display-mode: standalone){body{overscroll-behavior-y:none}}
 @media (max-width:520px){table.ev td.f,table.ev th:nth-child(3){display:none}.wrap{padding:14px 12px 50px}.card{padding:13px}.brand small{display:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand" onclick="go('')"><div class="logo">N</div><div><h1>Mis Notas</h1><small id="subt">Tus ramos, tus notas</small></div></div>
+    <div class="brand" onclick="go('')"><img class="logo" src="/icons/icon-192.png" alt="" width="34" height="34"><div><h1>Mis Notas</h1><small id="subt">Tus ramos, tus notas</small></div></div>
     <div class="row" id="hdr"></div>
   </header>
   <div id="banner"></div>
@@ -136,6 +183,11 @@ svg text{font-family:inherit}svg{max-width:100%;display:block}
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast"></div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<nav class="tabbar" id="tabbar" aria-label="Navegación">
+  <button id="tbHome" onclick="go('')"><span class="ic">📚</span>Mis ramos</button>
+  <button class="add" onclick="openCatalogo()" aria-label="Agregar ramo"><span class="ic">＋</span>Agregar</button>
+  <button onclick="toggleTheme()"><span class="ic">🌓</span>Tema</button>
+</nav>
 <script src="config.js"></script>
 <script type="module" src="app.js"></script>
 </body>
