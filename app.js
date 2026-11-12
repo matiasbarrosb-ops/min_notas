@@ -102,6 +102,12 @@ const api = {
     const row = { ...r, id: 'u-' + uid(), creado_por: 'demo', created_at: new Date().toISOString() };
     demo.st.extra.push(row); demo.save(); CATALOGO.push(row); return row;
   },
+  async actualizarRamo(id, def) {
+    const c = CATALOGO.find(x => x.id === id);
+    if (MODE === 'cloud') { const { error } = await sb.from('ramos').update({ def }).eq('id', id); if (error) throw error; }
+    else { const e = demo.st.extra.find(x => x.id === id); if (e) { e.def = def; demo.save(); } }
+    if (c) c.def = def; guardarCache();
+  },
   async buscarDuplicados(sigla, nombre) {
     const s = normSigla(sigla);
     return CATALOGO.filter(c => (s && normSigla(c.sigla) === s) || similitud(c.nombre, nombre) >= 0.75)
@@ -156,85 +162,102 @@ function N(rid) { const m = M(rid); return m ? (m.notas || (m.notas = {})) : {};
 function O(rid) { const m = M(rid); if (!m) return { meta: APROB }; return m.opts || (m.opts = { meta: APROB }); }
 function getG(rid, i) { const v = N(rid)[i]; return (v == null || v === '') ? null : +v; }
 function setG(rid, i, v) { if (v == null || v === '' || isNaN(v)) delete N(rid)[i]; else N(rid)[i] = v; api.guardar(rid); }
-function ramo(rid) { const c = CATALOGO.find(x => x.id === rid); if (!c) return null; const m = M(rid); const def = (m && m.override) || c.def; return { id: c.id, sigla: c.sigla, nombre: c.nombre, fuente: c.fuente, periodo: c.periodo, carrera: c.carrera, creado_por: c.creado_por, editado: !!(m && m.override), ...def }; }
+function ramo(rid) { const c = CATALOGO.find(x => x.id === rid); if (!c) return null; const m = M(rid); const def = toTree((m && m.override) || c.def); return { id: c.id, sigla: c.sigla, nombre: c.nombre, fuente: c.fuente, periodo: c.periodo, carrera: c.carrera, creado_por: c.creado_por, editado: !!(m && m.override), ...def }; }
 const misRamos = () => MIS.map(m => ramo(m.ramo_id)).filter(Boolean);
 
-/* ============================================================ MOTOR DE CÁLCULO */
-function allItems(r) { const out = []; r.partes.forEach(p => p.items.forEach(it => { out.push(it); (it.sub || []).forEach(s => out.push(s)); })); return out; }
-function examItem(r) { for (const p of r.partes) for (const it of p.items) if (it.examen) return { p, it }; return null; }
-function itemVal(r, it, fill, exVal) {
-  const o = O(r.id);
-  if (o['just_' + it.id] && it.reemplazable && exVal != null) return exVal;
-  if (it.sub && it.sub.length) {
-    const vals = it.sub.map(s => { const g = getG(r.id, s.id); return g != null ? g : fill(s); }).filter(v => v != null);
-    if (!vals.length) return null;
-    let a = vals.reduce((x, y) => x + y, 0) / vals.length;
-    if (it.bono && o['bono_' + it.bono.id]) a += it.bono.valor;
-    return clamp(a);
+/* ============================================================ MOTOR DE CÁLCULO (árbol de bloques)
+   Cada ramo es un árbol: grupos (tipo 'grupo') que contienen notas u otros grupos, a cualquier profundidad.
+   - peso: relativo entre hermanos (promedio 'ponderado'); en 'simple' todos pesan igual.
+   - minimo: ese bloque debe aprobarse por separado; si no, el grupo de arriba queda con su nota.
+   - examen / reemplazable / fecha / bono como antes. */
+const esGrupo = n => n && n.tipo === 'grupo';
+function toTree(def) {
+  if (!def) return { raiz: { id: 'raiz', nombre: 'Nota final', tipo: 'grupo', promedio: 'ponderado', hijos: [] } };
+  if (def.raiz) return def;
+  const conv = it => (it.sub && it.sub.length)
+    ? { id: it.id, nombre: it.nombre, peso: it.peso, tipo: 'grupo', promedio: 'simple', bono: it.bono, minimo: it.minimo ?? null, hijos: it.sub.map(s => ({ id: s.id, nombre: s.nombre, peso: 1, tipo: 'nota', fecha: s.fecha || null })) }
+    : { id: it.id, nombre: it.nombre, peso: it.peso, tipo: 'nota', fecha: it.fecha || null, examen: !!it.examen, reemplazable: !!it.reemplazable, minimo: it.minimo ?? null };
+  const partes = def.partes || [];
+  let raiz;
+  if (partes.length === 1) raiz = { id: partes[0].id || 'raiz', nombre: 'Nota final', tipo: 'grupo', promedio: 'ponderado', bono: partes[0].bonoParte, hijos: partes[0].items.map(conv) };
+  else raiz = { id: 'raiz', nombre: 'Nota final', tipo: 'grupo', promedio: 'ponderado', hijos: partes.map(p => ({ id: p.id, nombre: p.nombre, peso: p.peso, tipo: 'grupo', promedio: 'ponderado', minimo: p.minimo ?? null, bono: p.bonoParte, hijos: p.items.map(conv) })) };
+  return { raiz, eximicion: def.eximicion || null, reglas: def.reglas || [], dudas: def.dudas || [], porConfirmar: def.porConfirmar };
+}
+function hojas(n, out = []) { if (esGrupo(n)) n.hijos.forEach(h => hojas(h, out)); else if (n) out.push(n); return out; }
+function nodos(n, out = []) { if (!n) return out; out.push(n); if (esGrupo(n)) n.hijos.forEach(h => nodos(h, out)); return out; }
+const allItems = r => hojas(r.raiz);
+function examItem(r) { const it = hojas(r.raiz).find(h => h.examen); return it ? { it } : null; }
+function evalNodo(r, n, fill, exVal, vals) {
+  if (!esGrupo(n)) {
+    let v; const o = O(r.id);
+    if (o['just_' + n.id] && n.reemplazable && exVal != null) v = exVal;
+    else { const g = getG(r.id, n.id); v = g != null ? g : fill(n); }
+    vals.set(n, { v: v ?? null, comp: v != null }); return v ?? null;
   }
-  const g = getG(r.id, it.id); return g != null ? g : fill(it);
+  let sw = 0, s = 0, comp = true; const kn = [];
+  n.hijos.forEach(h => {
+    const hv = evalNodo(r, h, fill, exVal, vals);
+    if (hv == null) { comp = false; return; }
+    if (!vals.get(h).comp) comp = false;
+    const w = n.promedio === 'simple' ? 1 : (+h.peso || 0); s += hv * w; sw += w; kn.push({ h, hv });
+  });
+  let v = null;
+  if (kn.length) {
+    v = sw ? s / sw : kn.reduce((a, x) => a + x.hv, 0) / kn.length;
+    if (n.bono && O(r.id)['bono_' + n.bono.id]) v = clamp(v + (+n.bono.valor || 0));
+    const fail = kn.filter(x => x.h.minimo != null && x.hv < x.h.minimo);
+    if (fail.length) v = Math.min(...fail.map(x => x.hv));
+  }
+  if (!n.hijos.length) comp = false;
+  vals.set(n, { v, comp }); return v;
 }
 function compute(r, fill, noExim) {
   const ex = examItem(r);
   let exVal = null; if (ex) { const g = getG(r.id, ex.it.id); exVal = g != null ? g : fill(ex.it); }
-  const partes = r.partes.map(p => {
-    let sw = 0, s = 0;
-    p.items.forEach(it => { const v = itemVal(r, it, fill, exVal); if (v != null) { s += v * it.peso; sw += it.peso; } });
-    if (!sw) return { p, val: null };
-    let val = s / sw; if (p.bonoParte && O(r.id)['bono_' + p.bonoParte.id]) val = clamp(val + p.bonoParte.valor);
-    return { p, val, completo: Math.abs(sw - p.items.reduce((a, b) => a + b.peso, 0)) < 1e-9 };
-  });
-  const known = partes.filter(x => x.val != null);
-  if (!known.length) return { final: null, partes };
-  let final;
-  const pond = () => { const sw = known.reduce((a, x) => a + x.p.peso, 0); return known.reduce((a, x) => a + x.val * x.p.peso, 0) / sw; };
-  if (r.combinacion === 'minimos') { const fail = known.filter(x => x.p.minimo != null && x.val < x.p.minimo); final = fail.length ? Math.min(...fail.map(x => x.val)) : pond(); }
-  else final = pond();
+  const vals = new Map();
+  let final = evalNodo(r, r.raiz, fill, exVal, vals);
   let eximido = false;
   if (!noExim && r.eximicion && ex && getG(r.id, ex.it.id) == null) {
-    const np = partes.find(x => x.p.id === r.eximicion.parte);
-    if (np && np.val != null && np.completo && Math.round(np.val * 100) / 100 >= r.eximicion.umbral - 1e-9) {
-      const rojos = r.eximicion.sinRojos && np.p.items.some(it => { const v = itemVal(r, it, fill, exVal); return v != null && v < APROB; });
-      if (!rojos) { eximido = true; final = np.val; }
+    const np = nodos(r.raiz).find(n => n.id === r.eximicion.parte); const st = np && vals.get(np);
+    if (st && st.v != null && st.comp && Math.round(st.v * 100) / 100 >= r.eximicion.umbral - 1e-9) {
+      const rojos = r.eximicion.sinRojos && esGrupo(np) && np.hijos.some(h => { const x = vals.get(h); return x && x.v != null && x.v < APROB; });
+      if (!rojos) { eximido = true; final = st.v; }
     }
   }
-  return { final, partes, eximido };
+  return { final, vals, eximido };
 }
 const actual = r => compute(r, () => null);
 function supuesto(r) { const o = O(r.id); if (o.sup != null) return o.sup; const a = actual(r).final; return a != null ? Math.round(a * 10) / 10 : 4.0; }
 function proyeccion(r, exNota, noExim) { const sup = supuesto(r), ex = examItem(r); return compute(r, it => ex && it === ex.it ? exNota : sup, noExim).final; }
-function necesaria(r, meta) {
-  const ex = examItem(r); if (!ex) return { tipo: 'sinexamen' };
-  if (getG(r.id, ex.it.id) != null) return { tipo: 'rendido' };
-  { const sup = supuesto(r), c = compute(r, it => it === ex.it ? 1 : sup); if (c.eximido && c.final >= meta - 1e-9) return { tipo: 'eximido', np: c.final }; }
-  const f = x => proyeccion(r, x);
+function resolver(f, meta) { // menor nota (1 decimal) x en [1,7] con f(x) >= meta
   if (f(1) >= meta - 1e-9) return { tipo: 'ya', val: 1 };
   if (f(7) < meta - 1e-9) return { tipo: 'imposible', max: f(7) };
   let lo = 1, hi = 7; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (f(m) >= meta) hi = m; else lo = m; }
   let v = Math.ceil(hi * 10 - 1e-6) / 10; while (v < 7 && f(v) < meta - 1e-9) v = Math.round((v + .1) * 10) / 10;
   return { tipo: 'ok', val: v };
 }
+function necesaria(r, meta) {
+  const ex = examItem(r); if (!ex) return { tipo: 'sinexamen' };
+  if (getG(r.id, ex.it.id) != null) return { tipo: 'rendido' };
+  { const sup = supuesto(r), c = compute(r, it => it === ex.it ? 1 : sup); if (c.eximido && c.final >= meta - 1e-9) return { tipo: 'eximido', np: c.final }; }
+  return resolver(x => proyeccion(r, x), meta);
+}
 function paraEximir(r) {
   if (!r.eximicion) return null; const ex = examItem(r); if (!ex || getG(r.id, ex.it.id) != null) return null;
-  const np = r.partes.find(p => p.id === r.eximicion.parte); if (!np) return null;
-  const pend = []; np.items.forEach(it => { if (it.sub && it.sub.length) it.sub.forEach(s => { if (getG(r.id, s.id) == null) pend.push(s); }); else if (getG(r.id, it.id) == null) pend.push(it); });
+  const np = nodos(r.raiz).find(n => n.id === r.eximicion.parte); if (!np) return null;
+  const pend = hojas(np).filter(h => getG(r.id, h.id) == null);
   if (!pend.length) return null;
-  const g = v => compute(r, it => pend.includes(it) ? v : null).partes.find(x => x.p === np).val;
+  const g = v => compute(r, it => pend.includes(it) ? v : null).vals.get(np).v;
   const um = r.eximicion.umbral;
-  if (g(7) < um - 1e-9) return { imposible: true };
-  let lo = 1, hi = 7; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (g(m) >= um) hi = m; else lo = m; }
-  let v = Math.max(r.eximicion.sinRojos ? 4 : 1, Math.ceil(hi * 10 - 1e-6) / 10); while (v < 7 && g(v) < um - 1e-9) v = Math.round((v + .1) * 10) / 10;
-  return { val: v, n: pend.length };
+  const q = resolver(g, um);
+  if (q.tipo === 'imposible') return { imposible: true };
+  return { val: Math.max(r.eximicion.sinRojos ? 4 : 1, q.val), n: pend.length };
 }
 function necesariaResto(r, meta) { // sin examen: promedio que necesitas en lo que falta
-  const pend = allItems(r).filter(it => !(it.sub && it.sub.length) && getG(r.id, it.id) == null);
+  const pend = hojas(r.raiz).filter(h => getG(r.id, h.id) == null);
   if (!pend.length) return null;
-  const f = v => compute(r, it => pend.includes(it) ? v : null).final;
-  if (f(1) >= meta - 1e-9) return { val: 1, n: pend.length };
-  if (f(7) < meta - 1e-9) return { imposible: true, max: f(7), n: pend.length };
-  let lo = 1, hi = 7; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (f(m) >= meta) hi = m; else lo = m; }
-  let v = Math.ceil(hi * 10 - 1e-6) / 10; while (v < 7 && f(v) < meta - 1e-9) v = Math.round((v + .1) * 10) / 10;
-  return { val: v, n: pend.length };
+  const q = resolver(v => compute(r, it => pend.includes(it) ? v : null).final, meta);
+  return q.tipo === 'imposible' ? { imposible: true, max: q.max, n: pend.length } : { val: q.val, n: pend.length };
 }
 function estado(r) {
   const a = actual(r).final, n = necesaria(r, APROB);
@@ -247,11 +270,12 @@ function estado(r) {
   return { cls: 'bad', ic: '✕', txt: 'En riesgo' };
 }
 function msgNec(n, meta, r) {
-  if (r && actual(r).final == null) return { num: '—', msg: 'Ingresa tus notas para calcular cuánto necesitas.' };
-  if (r && r.combinacion === 'minimos' && n.tipo === 'imposible') { const f = actual(r).partes.find(x => x.val != null && x.p.minimo != null && x.val < x.p.minimo && !x.p.items.some(i => i.examen)); if (f) return { num: '✕', msg: `${esc(f.p.nombre)} está en ${fmt(f.val)} y necesita ≥ ${fmt2(f.p.minimo)} por separado.` }; }
+  const res = r ? actual(r) : null;
+  if (r && res.final == null) return { num: '—', msg: 'Ingresa tus notas para calcular cuánto necesitas.' };
+  if (r && n.tipo === 'imposible') { const f = nodos(r.raiz).find(x => x.minimo != null && !hojas(x).some(h => h.examen) && res.vals.get(x)?.v != null && res.vals.get(x).v < x.minimo && res.vals.get(x).comp); if (f) return { num: '✕', msg: `${esc(f.nombre)} está en ${fmt(res.vals.get(f).v)} y necesita ≥ ${fmt2(f.minimo)} por separado.` }; }
   if (n.tipo === 'sinexamen') {
     const q = necesariaResto(r, meta);
-    if (!q) return { num: fmt(actual(r).final), msg: 'Nota final con todas tus notas.' };
+    if (!q) return { num: fmt(res.final), msg: 'Nota final con todas tus notas.' };
     if (q.imposible) return { num: '>7', msg: `Ni con 7,0 en lo que falta llegas a ${fmt(meta)}.` };
     return { num: fmt(q.val), msg: `Promedio que necesitas en ${q.n === 1 ? 'la evaluación que falta' : 'las ' + q.n + ' evaluaciones que faltan'} para terminar con ${fmt(meta)}.` };
   }
@@ -261,7 +285,9 @@ function msgNec(n, meta, r) {
   if (n.tipo === 'imposible') return { num: '>7', msg: `Ni con un 7,0 llegas a ${fmt(meta)} (máximo posible ${fmt(n.max)}).` };
   return { num: fmt(n.val), msg: `Necesitas al menos esto en el examen para terminar con ${fmt(meta)}.` };
 }
-function proxima(r) { const hoy = new Date().toISOString().slice(0, 10); return allItems(r).filter(it => it.fecha && it.fecha >= hoy && getG(r.id, it.id) == null).sort((a, b) => a.fecha < b.fecha ? -1 : 1)[0]; }
+function proxima(r) { const hoy = new Date().toISOString().slice(0, 10); return hojas(r.raiz).filter(it => it.fecha && it.fecha >= hoy && getG(r.id, it.id) == null).sort((a, b) => a.fecha < b.fecha ? -1 : 1)[0]; }
+function cuota(padre, h) { if (padre.promedio === 'simple') return 1 / (padre.hijos.length || 1); const s = padre.hijos.reduce((a, x) => a + (+x.peso || 0), 0); return s ? (+h.peso || 0) / s : 0; }
+function efectivos(raiz) { const m = new Map(); (function rec(n, f) { m.set(n, f); if (esGrupo(n)) n.hijos.forEach(h => rec(h, f * cuota(n, h))); })(raiz, 1); return m; }
 const fdate = d => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${+dd}/${+m}`; };
 function diasHasta(d) { return Math.round((new Date(d + 'T12:00') - new Date(new Date().toISOString().slice(0, 10) + 'T12:00')) / 864e5); }
 const porConfirmar = r => (r.dudas && r.dudas.length) || r.porConfirmar;
@@ -366,7 +392,6 @@ function cardRamo(r) {
 }
 
 /* ============================================================ DETALLE DEL RAMO */
-let EDIT = false;
 function renderRamo(r) {
   const o = O(r.id), meta = o.meta || APROB;
   const res = actual(r), n = necesaria(r, meta), m = msgNec(n, meta, r), e = estado(r), exA = examItem(r), ex = paraEximir(r);
@@ -374,14 +399,14 @@ function renderRamo(r) {
   <button class="btn ghost back-btn" style="margin-bottom:12px" onclick="go('')">← Mis ramos</button>
   <div class="detail-head">
     <div><div class="sigla">${esc(r.sigla)}${r.periodo ? ' · ' + esc(r.periodo) : ''}</div><h2>${esc(r.nombre)}</h2><span class="pill ${e.cls}">${e.ic} ${e.txt}</span></div>
-    <div class="row"><button class="btn" onclick="toggleEdit()">${EDIT ? 'Listo' : 'Editar ponderaciones'}</button>
+    <div class="row"><button class="btn" onclick="openEditor('editar','${r.id}')">🧩 Editar ramo</button>
       <button class="btn ghost" onclick="borrarNotas('${r.id}')">Borrar notas</button>
       <button class="btn ghost danger" onclick="quitarRamo('${r.id}')">Quitar ramo</button></div>
   </div>
   ${r.dudas && r.dudas.length ? `<div class="warnbox"><b>Por confirmar:</b> ${r.dudas.map(esc).join(' · ')}</div>` : ''}
   ${r.editado ? `<div class="infobox">Estás usando tus propias ponderaciones para este ramo. <a href="#" onclick="restaurar('${r.id}');return false">Volver a las del catálogo</a></div>` : ''}
   <div class="det">
-    <div class="card a-tabla">${r.partes.map(p => parteHTML(r, p, res)).join('')}
+    <div class="card a-tabla">${arbolHTML(r, res)}
       <div class="note">Escribe notas de 1,0 a 7,0 (también sirve "45" para 4,5). Se guardan solas.</div></div>
       <div class="card a-res">
         <div class="result-big"><div style="font-size:12.5px;color:var(--muted);font-weight:500">${exA ? 'Nota necesaria en el examen' : (necesariaResto(r, meta) ? 'Necesitas en lo que falta' : 'Nota final')}</div>
@@ -402,47 +427,40 @@ function renderRamo(r) {
       <div class="card"><h3 style="margin:0 0 6px;font-size:14px">Reglas del ramo</h3><ul class="rules">${(r.reglas || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Sin reglas registradas.</li>'}</ul>
         <div class="note">Fuente: ${esc(r.fuente || '—')}${r.creado_por ? ' · agregado por la comunidad' : ''}</div></div>
     </div></div>`;
-  const pts = []; r.partes.forEach(p => p.items.forEach(it => {
-    if (it.sub && it.sub.length) it.sub.forEach(s => { const g = getG(r.id, s.id); if (g != null) pts.push({ label: s.nombre, full: s.nombre, v: g }); });
-    else { const g = getG(r.id, it.id); if (g != null) pts.push({ label: it.nombre, full: it.nombre, v: g }); }
-  }));
+  const pts = hojas(r.raiz).map(h => ({ label: h.nombre, full: h.nombre, v: getG(r.id, h.id) })).filter(x => x.v != null);
   const ch = $('chNotas'); pts.length ? barChart(ch, pts.map(p => ({ ...p, label: corto(p.label) })), { ref: APROB }) : ch.innerHTML = '<div class="note">Todavía no hay notas ingresadas.</div>';
   if (exA) { const xs = []; for (let x = 10; x <= 70; x++) xs.push({ x: x / 10, y: proyeccion(r, x / 10, true) }); lineChart($('chCurva'), xs, { ref: meta, mark: n.tipo === 'ok' ? n.val : null }); }
 }
 window.fmtG = fmt;
 const corto = s => s.replace(/Interrogaci[oó]n /i, 'I').replace(/Control (escrito )?/i, 'C').replace(/^Examen.*/i, 'Ex').replace(/Prueba /i, 'P').replace(/Seminario /i, 'S').replace(/\s*\(.*\)/, '');
-function parteHTML(r, p, res) {
-  const o = O(r.id), pv = res.partes.find(x => x.p === p), multi = r.partes.length > 1;
-  let rows = '';
-  p.items.forEach(it => {
-    const w = EDIT ? `<input class="wt" value="${fmt2(it.peso * 100)}" onchange="setPeso('${r.id}','${p.id}','${it.id}',this.value)">%` : `${fmt2(it.peso * 100)}%`;
-    if (it.sub && it.sub.length) {
-      const v = itemVal(r, it, () => null, null);
-      rows += `<tr><td><b>${esc(it.nombre)}</b>${it.bono ? `<br><label class="chk"><input type="checkbox" ${o['bono_' + it.bono.id] ? 'checked' : ''} onchange="setOpt('${r.id}','bono_${it.bono.id}',this.checked)"> ${esc(it.bono.nombre)}</label>` : ''}</td><td class="w">${w}</td><td class="f"></td><td><div class="calc">${fmt(v)}</div></td></tr>`;
-      it.sub.forEach(s => rows += rowInput(r, s, 'sub', ''));
-    } else rows += rowInput(r, it, '', w);
-  });
-  return `<div class="parte">
-    ${multi ? `<div class="parte-h"><b>${esc(p.nombre)}</b><span>${fmt2(p.peso * 100)}%${p.minimo != null ? ' · mínimo ' + fmt2(p.minimo) : ''} · actual <b style="color:var(--text)">${fmt(pv && pv.val)}</b></span></div>` : ''}
-    <table class="ev"><thead><tr><th>Evaluación</th><th>Peso</th><th>Fecha</th><th style="text-align:center">Nota</th></tr></thead><tbody>${rows}</tbody></table>
-    ${p.bonoParte ? `<label class="chk" style="margin-top:8px"><input type="checkbox" ${o['bono_' + p.bonoParte.id] ? 'checked' : ''} onchange="setOpt('${r.id}','bono_${p.bonoParte.id}',this.checked)"> ${esc(p.bonoParte.nombre)}</label>` : ''}</div>`;
+function arbolHTML(r, res) {
+  const ef = efectivos(r.raiz); let rows = '';
+  const fila = (n, padre, d) => {
+    const pct = padre.promedio === 'simple' ? '<span title="promedio simple">prom.</span>' : fmt2(cuota(padre, n) * 100) + '%';
+    const tit = `title="${fmt2(ef.get(n) * 100)}% de la nota final"`;
+    const ind = `style="padding-left:${6 + d * 16}px"`;
+    const min = n.minimo != null ? ` <span class="pill warn" style="padding:0 7px;font-size:11px">mín ${fmt2(n.minimo)}</span>` : '';
+    if (esGrupo(n)) {
+      const v = res.vals.get(n);
+      const bono = n.bono ? `<br><label class="chk"><input type="checkbox" ${O(r.id)['bono_' + n.bono.id] ? 'checked' : ''} onchange="setOpt('${r.id}','bono_${esc(n.bono.id)}',this.checked)"> ${esc(n.bono.nombre)}</label>` : '';
+      rows += `<tr class="grp d${Math.min(d, 3)}"><td ${ind}><b>${esc(n.nombre)}</b>${min}${bono}</td><td class="w" ${tit}>${pct}</td><td class="f"></td><td><div class="calc">${fmt(v && v.v)}</div></td></tr>`;
+      n.hijos.forEach(h => fila(h, n, d + 1));
+    } else rows += rowInput(r, n, d, pct + '', tit, min);
+  };
+  r.raiz.hijos.forEach(h => fila(h, r.raiz, 0));
+  if (r.raiz.bono) rows += `<tr><td colspan="4"><label class="chk"><input type="checkbox" ${O(r.id)['bono_' + r.raiz.bono.id] ? 'checked' : ''} onchange="setOpt('${r.id}','bono_${esc(r.raiz.bono.id)}',this.checked)"> ${esc(r.raiz.bono.nombre)}</label></td></tr>`;
+  return `<table class="ev"><thead><tr><th>Evaluación</th><th>Peso</th><th>Fecha</th><th style="text-align:center">Nota</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-function rowInput(r, it, cls, w) {
+function rowInput(r, it, d, w, tit, min) {
   const o = O(r.id), g = getG(r.id, it.id), just = o['just_' + it.id];
-  return `<tr class="${cls}"><td>${esc(it.nombre)}${it.examen ? ' <span class="pill neutral" style="padding:1px 7px;font-size:11px">examen</span>' : ''}
-    ${it.reemplazable ? `<br><label class="chk"><input type="checkbox" ${just ? 'checked' : ''} onchange="setOpt('${r.id}','just_${it.id}',this.checked)"> Falté justificado (vale el examen)</label>` : ''}</td>
-    <td class="w">${w}</td><td class="f">${fdate(it.fecha)}</td>
-    <td>${just ? '<div class="calc">= Ex</div>' : `<input class="g" inputmode="decimal" aria-label="Nota ${esc(it.nombre)}" value="${g != null ? fmt(g) : ''}" placeholder="—" onchange="onG(this,'${r.id}','${it.id}')">`}</td></tr>`;
+  return `<tr><td style="padding-left:${6 + d * 16}px">${esc(it.nombre)}${it.examen ? ' <span class="pill neutral" style="padding:1px 7px;font-size:11px">examen</span>' : ''}${min || ''}
+    ${it.reemplazable ? `<br><label class="chk"><input type="checkbox" ${just ? 'checked' : ''} onchange="setOpt('${r.id}','just_${esc(it.id)}',this.checked)"> Falté justificado (vale el examen)</label>` : ''}</td>
+    <td class="w" ${tit || ''}>${w}</td><td class="f">${fdate(it.fecha)}</td>
+    <td>${just ? '<div class="calc">= Ex</div>' : `<input class="g" inputmode="decimal" aria-label="Nota ${esc(it.nombre)}" value="${g != null ? fmt(g) : ''}" placeholder="—" onchange="onG(this,'${r.id}','${esc(it.id)}')">`}</td></tr>`;
 }
 const keepScroll = f => { const y = scrollY; f(); scrollTo(0, y); };
 window.onG = (el, rid, i) => { const v = parseG(el.value); if (v != null && (isNaN(v) || v < 1 || v > 7)) { el.classList.add('bad'); return; } setG(rid, i, v); keepScroll(render); };
 window.setOpt = (rid, k, v) => { const o = O(rid); if (v == null) delete o[k]; else o[k] = v; api.guardar(rid); keepScroll(render); };
-window.toggleEdit = () => { EDIT = !EDIT; keepScroll(render); };
-window.setPeso = (rid, pid, iid, val) => {
-  const m = M(rid), c = CATALOGO.find(x => x.id === rid); if (!m.override) m.override = JSON.parse(JSON.stringify(c.def));
-  const it = m.override.partes.find(p => p.id === pid).items.find(x => x.id === iid); const v = parseFloat(String(val).replace(',', '.'));
-  if (!isNaN(v) && v >= 0) it.peso = v / 100; api.guardar(rid); keepScroll(render);
-};
 window.restaurar = rid => { M(rid).override = null; api.guardar(rid); keepScroll(render); };
 window.borrarNotas = rid => { if (!confirmar('borrar-' + rid, 'Toca de nuevo "Borrar notas" para confirmar.')) return; const m = M(rid); m.notas = {}; m.opts = { meta: APROB }; api.guardar(rid); render(); };
 window.quitarRamo = async rid => { if (!confirmar('quitar-' + rid, 'Toca de nuevo "Quitar ramo" para confirmar. Se borran tus notas de este ramo.')) return; await api.desinscribir(rid); go(''); toast('Ramo quitado'); };
@@ -488,8 +506,8 @@ function lineChart(el, pts, { ref, mark }) {
 }
 
 /* ============================================================ MODAL */
-function openModal(h) { $('modal').innerHTML = `<button class="btn ghost x" onclick="closeModal()" aria-label="Cerrar">✕</button>` + h; $('modalBg').style.display = 'flex'; }
-window.closeModal = () => { $('modalBg').style.display = 'none'; detenerDictado(); };
+function openModal(h) { if (!h.includes('class="ed"')) $('modal').classList.remove('full'); $('modal').innerHTML = `<button class="btn ghost x" onclick="closeModal()" aria-label="Cerrar">✕</button>` + h; $('modalBg').style.display = 'flex'; }
+window.closeModal = () => { $('modalBg').style.display = 'none'; $('modal').classList.remove('full'); detenerDictado(); };
 $('modalBg').addEventListener('click', e => { if (e.target === $('modalBg')) closeModal(); });
 
 /* ---------- Catálogo ---------- */
@@ -525,7 +543,7 @@ function drawCrear() {
   openModal(`<h3>Crear ramo nuevo</h3>
     <div class="tabs">${[['pdf', '📄 Subir PDF'], ['voz', '🎙️ Por voz'], ['manual', '✏️ A mano']].map(([k, l]) => `<button class="${t === k ? 'on' : ''}" onclick="CREAR_tab('${k}')">${l}</button>`).join('')}</div>
     <div id="crearBody">${t === 'pdf' ? crearPdfHTML() : t === 'voz' ? crearVozHTML() : ''}</div>`);
-  if (t === 'manual') { CREAR.borrador = borradorVacio(); drawPreview(); }
+  if (t === 'manual') openEditor('crear', null, borradorVacio());
 }
 window.CREAR_tab = k => { detenerDictado(); CREAR.tab = k; drawCrear(); };
 function crearPdfHTML() {
@@ -543,10 +561,9 @@ function crearVozHTML() {
     <div id="iaEstado"></div>`;
 }
 function borradorVacio() {
-  return { sigla: '', nombre: '', periodo: periodoActual(), carrera: '', universidad: 'UC', combinacion: 'ponderado', eximicion: null,
-    partes: [{ id: 'p', nombre: 'Nota final', peso: 1, minimo: null, items: [
-      { id: 'i1', nombre: 'Interrogación 1', peso: .2 }, { id: 'i2', nombre: 'Interrogación 2', peso: .2 }, { id: 'i3', nombre: 'Interrogación 3', peso: .2 }, { id: 'ex', nombre: 'Examen', peso: .4, examen: true }] }],
-    reglas: [], dudas: [], fuente: 'Agregado a mano' };
+  const n = (id, nombre, peso, x = {}) => ({ id, nombre, peso, tipo: 'nota', ...x });
+  return { sigla: '', nombre: '', periodo: periodoActual(), carrera: '', universidad: 'UC', eximicion: null, reglas: [], dudas: [], fuente: 'Agregado a mano',
+    raiz: { id: 'raiz', nombre: 'Nota final', tipo: 'grupo', promedio: 'ponderado', hijos: [n('i1', 'Interrogación 1', .2), n('i2', 'Interrogación 2', .2), n('i3', 'Interrogación 3', .2), n('ex', 'Examen', .4, { examen: true })] } };
 }
 function periodoActual() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() < 7 ? 1 : 2); }
 
@@ -576,112 +593,236 @@ window.procesarTexto = async () => {
   try { recibirBorrador(await api.extraer({ tipo: 'texto', texto: t }), 'Descrito por voz/texto'); } catch (e) { iaEstado('error', e.message); }
 };
 function recibirBorrador(r, fuente) {
-  const b = normalizarDef(r); b.fuente = fuente; CREAR.borrador = b; drawPreview();
+  const b = normalizarDef(r); b.fuente = fuente; openEditor('crear', null, b);
 }
 function normalizarDef(r) {
-  const b = { ...borradorVacio(), ...r };
-  b.partes = (r.partes || []).map((p, pi) => ({ id: p.id || 'p' + pi, nombre: p.nombre || 'Nota final', peso: +p.peso || 0, minimo: p.minimo ?? null,
-    items: (p.items || []).map((it, ii) => ({ id: it.id || ('e' + pi + '_' + ii), nombre: it.nombre || 'Evaluación', peso: +it.peso || 0, fecha: it.fecha || null, examen: !!it.examen, reemplazable: !!it.reemplazable,
-      sub: Array.isArray(it.sub) && it.sub.length ? it.sub.map((s, si) => ({ id: s.id || ('s' + pi + '_' + ii + '_' + si), nombre: s.nombre || 'Sub ' + (si + 1), fecha: s.fecha || null })) : undefined })) }));
-  if (!b.partes.length) b.partes = borradorVacio().partes;
-  const ids = new Set(); b.partes.forEach(p => p.items.forEach(it => { [it, ...(it.sub || [])].forEach(x => { while (ids.has(x.id)) x.id += '_'; ids.add(x.id); }); }));
-  if (b.partes.length === 1) b.partes[0].peso = 1;
-  b.reglas = Array.isArray(b.reglas) ? b.reglas : []; b.dudas = Array.isArray(b.dudas) ? b.dudas : [];
-  return b;
+  const base = borradorVacio();
+  const t = toTree({ ...r, partes: (r.partes || []).map((p, pi) => ({ ...p, id: p.id || 'p' + pi, items: (p.items || []).map((it, ii) => ({ ...it, id: it.id || ('e' + pi + '_' + ii), sub: Array.isArray(it.sub) && it.sub.length ? it.sub.map((x, si) => ({ ...x, id: x.id || ('s' + pi + '_' + ii + '_' + si) })) : null })) })) });
+  const b = { ...base, sigla: r.sigla || '', nombre: r.nombre || '', periodo: r.periodo || base.periodo, carrera: r.carrera || '', eximicion: r.eximicion || null, reglas: Array.isArray(r.reglas) ? r.reglas : [], dudas: Array.isArray(r.dudas) ? r.dudas : [], raiz: (t.raiz && t.raiz.hijos.length) ? t.raiz : base.raiz };
+  limpiarArbol(b.raiz); return b;
+}
+function limpiarArbol(raiz) { // ids únicos, tipos y pesos válidos
+  const ids = new Set();
+  nodos(raiz).forEach(n => {
+    n.id = String(n.id || uid()); while (ids.has(n.id)) n.id += '_'; ids.add(n.id);
+    n.nombre = n.nombre || (esGrupo(n) ? 'Grupo' : 'Evaluación');
+    if (esGrupo(n)) { n.hijos = n.hijos || []; n.promedio = n.promedio === 'simple' ? 'simple' : 'ponderado'; }
+    n.peso = +n.peso || 0; if (n.minimo === undefined) n.minimo = null;
+  });
 }
 
-/* Vista previa editable + revisión de duplicados */
-window.drawPreview = drawPreview;
-function drawPreview() {
-  const b = CREAR.borrador; const body = $('crearBody'); if (!body) return;
-  const sumP = b.partes.reduce((a, p) => a + (+p.peso || 0), 0);
-  body.innerHTML = `
-    ${CREAR.tab !== 'manual' ? `<div class="infobox">✓ La IA armó este borrador. <b>Revísalo antes de guardar</b>: así va a quedar para todos los que agreguen este ramo.</div>` : ''}
-    ${b.dudas.length ? `<div class="warnbox"><b>La IA no estaba segura de:</b><ul class="rules" style="margin:4px 0 0">${b.dudas.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}
-    <div class="row" style="align-items:flex-start">
-      <div class="field" style="max-width:150px"><label>Sigla</label><input value="${esc(b.sigla)}" oninput="B('sigla',this.value)" onchange="revisarDup()" placeholder="MAT1630"></div>
-      <div class="field" style="min-width:200px"><label>Nombre</label><input value="${esc(b.nombre)}" oninput="B('nombre',this.value)" onchange="revisarDup()" placeholder="Cálculo III"></div></div>
-    <div class="row" style="align-items:flex-start">
-      <div class="field"><label>Universidad</label><input value="${esc(b.universidad)}" oninput="B('universidad',this.value)"></div>
-      <div class="field"><label>Carrera (opcional)</label><input value="${esc(b.carrera || '')}" oninput="B('carrera',this.value)"></div>
-      <div class="field" style="max-width:110px"><label>Período</label><input value="${esc(b.periodo)}" oninput="B('periodo',this.value)" placeholder="2026-2"></div></div>
-    <div id="dupBox"></div>
-    <h4 style="margin:12px 0 8px">Evaluaciones</h4>
-    ${b.partes.map((p, pi) => previewParte(b, p, pi)).join('')}
-    <div class="row" style="justify-content:space-between">
-      <button class="btn sm ghost" onclick="addParte()">＋ Agregar componente (ej. laboratorio)</button>
-      ${b.partes.length > 1 ? `<span class="${Math.abs(sumP - 1) < .001 ? 'sum-ok' : 'sum-bad'}">Componentes suman ${fmt2(sumP * 100)}%</span>` : ''}</div>
-    ${b.partes.length > 1 ? `<label class="chk" style="margin-top:8px"><input type="checkbox" ${b.combinacion === 'minimos' ? 'checked' : ''} onchange="B('combinacion',this.checked?'minimos':'ponderado');drawPreview()"> Cada componente con mínimo se debe aprobar por separado</label>` : ''}
-    ${eximicionHTML(b)}
-    <h4 style="margin:14px 0 6px">Reglas importantes</h4>
-    <div class="field"><textarea oninput="B('reglas',this.value.split('\\n').map(s=>s.trim()).filter(Boolean))" placeholder="Una regla por línea">${esc(b.reglas.join('\n'))}</textarea></div>
-    <div id="guardarErr"></div>
-    <div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn primary" id="btnGuardar" onclick="guardarRamo()">Guardar y agregar a mis ramos</button></div>`;
-  revisarDup();
+/* ============================================================ EDITOR LEGO (crear y editar ramos) */
+const ED = { modo: 'crear', rid: null, b: null, sel: 'raiz', abiertos: new Set(), mas: new Set(), drag: null, varias: null };
+window.ED = ED;
+const edNodo = id => nodos(ED.b.raiz).find(n => n.id === id);
+const edPadre = (id, n = ED.b.raiz) => { if (!esGrupo(n)) return null; for (const h of n.hijos) { if (h.id === id) return n; const p = edPadre(id, h); if (p) return p; } return null; };
+const edNuevoId = () => 'b' + uid();
+window.openEditor = (modo, rid, borrador) => {
+  ED.modo = modo; ED.rid = rid; ED.mas = new Set(); ED.varias = null;
+  if (modo === 'editar') { const r = ramo(rid); ED.b = JSON.parse(JSON.stringify({ sigla: r.sigla, nombre: r.nombre, periodo: r.periodo, carrera: r.carrera, universidad: 'UC', fuente: r.fuente, raiz: r.raiz, eximicion: r.eximicion || null, reglas: r.reglas || [], dudas: r.dudas || [] })); }
+  else ED.b = borrador;
+  limpiarArbol(ED.b.raiz);
+  ED.sel = ED.b.raiz.id; ED.abiertos = new Set(nodos(ED.b.raiz).filter(esGrupo).map(n => n.id));
+  $('modal').classList.add('full'); drawEditor(); if (modo === 'crear') setTimeout(revisarDup, 0);
+};
+function drawEditor() {
+  const b = ED.b, crear = ED.modo === 'crear', sel = edNodo(ED.sel) || b.raiz;
+  const ef = efectivos(b.raiz);
+  const piezas = [['nota', '📝 Nota'], ['grupo', '📦 Grupo'], ['interrogacion', '🧮 Interrogación'], ['control', '⏱️ Control'], ['tarea', '📄 Tarea'], ['examen', '🎓 Examen'], ['lab3', '🔬 Laboratorio ×3'], ['varias', '✳️ Varias…']];
+  const y = $('modal').querySelector('.ed-body')?.scrollTop || 0;
+  openModal(`<div class="ed">
+    <div class="ed-top"><div><h3 style="margin:0">${crear ? 'Crear ramo' : 'Editar ramo'}</h3><div class="note" style="margin:2px 0 0">Arma el ramo con bloques: notas y grupos, uno dentro de otro.</div></div></div>
+    <div class="ed-body">
+      ${b.dudas && b.dudas.length ? `<div class="warnbox"><b>Revisa:</b><ul class="rules" style="margin:4px 0 0">${b.dudas.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}
+      ${crear ? `<div class="row" style="align-items:flex-start">
+        <div class="field" style="max-width:150px"><label>Sigla</label><input value="${esc(b.sigla)}" oninput="ED.b.sigla=this.value" onchange="revisarDup()" placeholder="MAT1630"></div>
+        <div class="field" style="min-width:190px"><label>Nombre</label><input value="${esc(b.nombre)}" oninput="ED.b.nombre=this.value" onchange="revisarDup()" placeholder="Cálculo III"></div></div>
+      <div class="row" style="align-items:flex-start">
+        <div class="field"><label>Universidad</label><input value="${esc(b.universidad)}" oninput="ED.b.universidad=this.value"></div>
+        <div class="field"><label>Carrera (opcional)</label><input value="${esc(b.carrera || '')}" oninput="ED.b.carrera=this.value"></div>
+        <div class="field" style="max-width:110px"><label>Período</label><input value="${esc(b.periodo)}" oninput="ED.b.periodo=this.value" placeholder="2026-2"></div></div>
+      <div id="dupBox"></div>` : `<div class="sigla" style="margin-bottom:8px">${esc(b.sigla)} · ${esc(b.nombre)}</div>`}
+      <div class="piezas"><div class="note" style="margin:0 0 6px">Agregar en <b>${esc(sel.nombre)}</b> <span style="opacity:.8">(toca un grupo 📦 para elegir dónde)</span></div>
+        <div class="row">${piezas.map(([k, l]) => `<button class="pieza" onclick="edPieza('${k}')">${l}</button>`).join('')}</div>
+        ${ED.varias ? `<div class="row varias"><span>Agregar</span><input class="inp" style="width:64px" id="vN" value="${ED.varias.n}" inputmode="numeric"><span>notas llamadas</span><input class="inp" style="width:140px" id="vNom" value="${esc(ED.varias.nombre)}"><label class="chk"><input type="checkbox" id="vGrupo" ${ED.varias.grupo ? 'checked' : ''}> dentro de un grupo (promedio)</label><button class="btn primary sm" onclick="edVariasOk()">Agregar</button><button class="btn ghost sm" onclick="ED.varias=null;drawEditor()">Cancelar</button></div>` : ''}
+      </div>
+      <div class="arbol">${bloqueHTML(b.raiz, null, 0, ef)}</div>
+      <div class="card" style="margin-top:12px;padding:12px">${eximicionEdHTML(b)}</div>
+      <h4 style="margin:14px 0 6px">Reglas importantes</h4>
+      <div class="field"><textarea oninput="ED.b.reglas=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)" placeholder="Una regla por línea">${esc((b.reglas || []).join('\n'))}</textarea></div>
+      <div id="guardarErr"></div>
+    </div>
+    <div class="ed-foot">${edBotones()}</div></div>`);
+  const body = $('modal').querySelector('.ed-body'); if (body) body.scrollTop = y;
 }
-function previewParte(b, p, pi) {
-  const sum = p.items.reduce((a, it) => a + (+it.peso || 0), 0);
-  return `<div class="prev-parte">
-    ${b.partes.length > 1 ? `<div class="row" style="margin-bottom:8px"><input class="inp" style="flex:1;min-width:140px" value="${esc(p.nombre)}" oninput="P(${pi},'nombre',this.value)">
-      <span style="font-size:13px;color:var(--text-2)">Pesa</span><input class="inp" style="width:64px" value="${fmt2(p.peso * 100)}" onchange="P(${pi},'peso',pct(this.value));drawPreview()">%
-      <label class="chk"><input type="checkbox" ${p.minimo != null ? 'checked' : ''} onchange="P(${pi},'minimo',this.checked?3.95:null)"> Mínimo 3,95</label>
-      <button class="btn sm ghost" onclick="delParte(${pi})" aria-label="Quitar componente">✕</button></div>` : ''}
-    <div class="prev-row" style="font-size:12px;color:var(--muted)"><span>Evaluación</span><span>Peso %</span><span class="hide-sm">Fecha</span><span class="hide-sm">Examen</span><span></span></div>
-    ${p.items.map((it, ii) => `<div class="prev-row"><input type="text" value="${esc(it.nombre)}" oninput="I(${pi},${ii},'nombre',this.value)">
-      <input class="num" value="${fmt2(it.peso * 100)}" onchange="I(${pi},${ii},'peso',pct(this.value));drawPreview()">
-      <input type="date" class="hide-sm" value="${it.fecha || ''}" onchange="I(${pi},${ii},'fecha',this.value||null)">
-      <label class="chk hide-sm"><input type="radio" name="exm" ${it.examen ? 'checked' : ''} onchange="marcarExamen(${pi},${ii})"> Examen</label>
-      <button class="btn sm ghost" onclick="delItem(${pi},${ii})" aria-label="Quitar">✕</button></div>
-      ${(it.sub || []).map((s, si) => `<div class="prev-row subr"><input type="text" value="${esc(s.nombre)}" oninput="S(${pi},${ii},${si},this.value)"><span class="note" style="margin:0">promedio</span><button class="btn sm ghost" onclick="delSub(${pi},${ii},${si})">✕</button></div>`).join('')}`).join('')}
-    <div class="row" style="justify-content:space-between"><button class="btn sm ghost" onclick="addItem(${pi})">＋ Evaluación</button>
-      <span class="${Math.abs(sum - 1) < .001 ? 'sum-ok' : 'sum-bad'}">${Math.abs(sum - 1) < .001 ? '✓ ' : ''}Suma ${fmt2(sum * 100)}%</span></div></div>`;
+function edBotones() {
+  if (ED.modo === 'crear') return `<button class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn primary" id="btnGuardar" onclick="guardarRamo()">Guardar y agregar a mis ramos</button>`;
+  const c = CATALOGO.find(x => x.id === ED.rid), duenio = MODE === 'demo' ? c && c.creado_por === 'demo' : c && USER && c.creado_por === USER.id;
+  return `<button class="btn ghost" onclick="closeModal()">Cancelar</button>${duenio ? `<button class="btn" onclick="guardarEdicion(true)">Guardar para todos</button>` : ''}<button class="btn primary" onclick="guardarEdicion(false)">Guardar${duenio ? ' solo para mí' : ''}</button>`;
 }
-function eximicionHTML(b) {
-  const e = b.eximicion;
-  return `<div class="row" style="margin-top:10px"><label class="chk"><input type="checkbox" ${e ? 'checked' : ''} onchange="toggleExim(this.checked)"> Tiene eximición del examen</label>
-    ${e ? `<span style="font-size:13px;color:var(--text-2)">con nota de presentación ≥</span><input class="inp" style="width:64px" value="${fmt2(e.umbral)}" onchange="CREAR.borrador.eximicion.umbral=+String(this.value).replace(',','.')">
-      <label class="chk"><input type="checkbox" ${e.sinRojos ? 'checked' : ''} onchange="CREAR.borrador.eximicion.sinRojos=this.checked"> y sin notas rojas</label>` : ''}</div>`;
+function bloqueHTML(n, padre, d, ef) {
+  const g = esGrupo(n), raiz = !padre, abierto = ED.abiertos.has(n.id), sel = ED.sel === n.id;
+  const sumP = g && n.promedio !== 'simple' ? n.hijos.reduce((a, h) => a + (+h.peso || 0), 0) : 1;
+  const sumOk = !g || n.promedio === 'simple' || !n.hijos.length || Math.abs(sumP - 1) < .001;
+  const pesoUI = raiz ? '' : padre.promedio === 'simple' ? `<span class="pct-s" title="Promedio simple: todas pesan igual">=${fmt2(100 / padre.hijos.length)}%</span>` : `<span class="pct-w"><input class="pct" inputmode="decimal" value="${fmt2((+n.peso || 0) * 100)}" onchange="edPeso('${n.id}',this.value)" aria-label="Peso de ${esc(n.nombre)}">%</span>`;
+  const badges = (n.examen ? '<span class="pill neutral bd">🎓 examen</span>' : '') + (n.minimo != null ? `<span class="pill warn bd">mín ${fmt2(n.minimo)}</span>` : '') + (n.bono ? '<span class="pill info bd">bono</span>' : '') + (n.fecha ? `<span class="pill neutral bd">${fdate(n.fecha)}</span>` : '');
+  const fila = `<div class="blk-row" ${g ? `onclick="edSel(event,'${n.id}')"` : ''} ondragover="edOver(event,'${n.id}')" ondragleave="this.classList.remove('over')" ondrop="edDrop(event,'${n.id}','antes')">
+      ${raiz ? '' : `<span class="handle" draggable="true" ondragstart="edDragStart(event,'${n.id}')" ondragend="ED.drag=null" title="Arrastra para mover">⠿</span>`}
+      ${g ? `<button class="tog" onclick="edTog(event,'${n.id}')" aria-label="${abierto ? 'Cerrar' : 'Abrir'}">${abierto ? '▾' : '▸'}</button>` : ''}
+      <span class="ico">${raiz ? '🏁' : g ? '📦' : '📝'}</span>
+      <input class="nom" value="${esc(n.nombre)}" onclick="event.stopPropagation()" onchange="edSet('${n.id}','nombre',this.value)" aria-label="Nombre">
+      ${pesoUI}
+      ${raiz ? '' : `<span class="eff" title="Cuánto pesa en la nota final">${fmt2(ef.get(n) * 100)}%</span>`}
+      <span class="bds">${badges}</span>
+      ${raiz ? '' : `<button class="ib" onclick="edDup(event,'${n.id}')" title="Duplicar">⧉</button>`}
+      <button class="ib" onclick="edMas(event,'${n.id}')" title="Más opciones">⋯</button>
+      ${raiz ? '' : `<button class="ib del" onclick="edDel(event,'${n.id}')" title="Eliminar">✕</button>`}
+    </div>`;
+  const mas = ED.mas.has(n.id) ? masHTML(n, padre) : '';
+  const hijos = g && (abierto || raiz) ? `<div class="hijos">${n.hijos.map(h => bloqueHTML(h, n, d + 1, ef)).join('')}
+      <div class="g-foot" ondragover="edOver(event,'${n.id}',true)" ondragleave="this.classList.remove('over')" ondrop="edDrop(event,'${n.id}','dentro')">
+        <button class="btn sm ghost" onclick="edAdd('${n.id}','nota')">＋ Nota</button><button class="btn sm ghost" onclick="edAdd('${n.id}','grupo')">＋ Grupo</button>
+        ${n.promedio !== 'simple' && n.hijos.length > 1 ? `<button class="btn sm ghost" onclick="edIgual('${n.id}')">⚖️ Repartir igual</button>` : ''}
+        ${!sumOk ? `<button class="btn sm ghost" onclick="edAjustar('${n.id}')">Ajustar a 100%</button>` : ''}
+        <span class="${sumOk ? 'sum-ok' : 'sum-bad'}">${n.promedio === 'simple' ? 'promedio simple' : (sumOk ? '✓ ' : '') + 'suma ' + fmt2(sumP * 100) + '%'}</span>
+        <span class="drop-hint">Suelta aquí para meterlo en este grupo</span>
+      </div></div>` : '';
+  return `<div class="blk ${g ? 'g' : 'h'} ${raiz ? 'raiz' : ''} ${sel ? 'sel' : ''}" data-d="${Math.min(d, 4)}">${fila}${mas}${hijos}</div>`;
 }
-window.pct = v => (parseFloat(String(v).replace(',', '.')) || 0) / 100;
-window.B = (k, v) => { CREAR.borrador[k] = v; };
-window.P = (pi, k, v) => { CREAR.borrador.partes[pi][k] = v; };
-window.I = (pi, ii, k, v) => { CREAR.borrador.partes[pi].items[ii][k] = v; };
-window.S = (pi, ii, si, v) => { CREAR.borrador.partes[pi].items[ii].sub[si].nombre = v; };
-window.delSub = (pi, ii, si) => { const it = CREAR.borrador.partes[pi].items[ii]; it.sub.splice(si, 1); if (!it.sub.length) delete it.sub; drawPreview(); };
-window.addItem = pi => { CREAR.borrador.partes[pi].items.push({ id: 'n' + uid(), nombre: '', peso: 0 }); drawPreview(); };
-window.delItem = (pi, ii) => { CREAR.borrador.partes[pi].items.splice(ii, 1); drawPreview(); };
-window.marcarExamen = (pi, ii) => { CREAR.borrador.partes.forEach(p => p.items.forEach(it => it.examen = false)); CREAR.borrador.partes[pi].items[ii].examen = true; };
-window.addParte = () => { const b = CREAR.borrador; if (b.partes.length === 1) { b.partes[0].nombre = 'Cátedra'; b.partes[0].peso = .7; } b.partes.push({ id: 'p' + uid(), nombre: 'Laboratorio', peso: .3, minimo: 3.95, items: [{ id: 'l' + uid(), nombre: 'Nota de laboratorio', peso: 1 }] }); b.combinacion = 'minimos'; drawPreview(); };
-window.delParte = pi => { const b = CREAR.borrador; b.partes.splice(pi, 1); if (b.partes.length === 1) { b.partes[0].peso = 1; b.combinacion = 'ponderado'; } drawPreview(); };
-window.toggleExim = on => { const b = CREAR.borrador; b.eximicion = on ? { parte: b.partes[0].id, umbral: 5.5, sinRojos: false } : null; drawPreview(); };
+function masHTML(n, padre) {
+  const g = esGrupo(n), raiz = !padre;
+  const grupos = nodos(ED.b.raiz).filter(x => esGrupo(x) && x.id !== n.id && !nodos(n).includes(x) && (!padre || x.id !== padre.id));
+  return `<div class="mas">
+    ${g ? `<div class="row"><span>Cómo se calcula:</span><div class="seg"><button class="${n.promedio !== 'simple' ? 'on' : ''}" onclick="edSet('${n.id}','promedio','ponderado')">Con pesos</button><button class="${n.promedio === 'simple' ? 'on' : ''}" onclick="edSet('${n.id}','promedio','simple')">Promedio simple</button></div></div>` : `
+      <div class="row"><label class="chk">Fecha <input type="date" class="inp" style="width:auto" value="${n.fecha || ''}" onchange="edSet('${n.id}','fecha',this.value||null)"></label></div>
+      <div class="row"><label class="chk"><input type="checkbox" ${n.examen ? 'checked' : ''} onchange="edExamen('${n.id}',this.checked)"> Es el examen final</label>
+      <label class="chk"><input type="checkbox" ${n.reemplazable ? 'checked' : ''} onchange="edSet('${n.id}','reemplazable',this.checked)"> Si falto justificado, vale la nota del examen</label></div>`}
+    ${raiz ? '' : `<div class="row"><label class="chk"><input type="checkbox" ${n.minimo != null ? 'checked' : ''} onchange="edSet('${n.id}','minimo',this.checked?3.95:null)"> Se debe aprobar por separado (mínimo</label><input class="inp" style="width:60px" value="${fmt2(n.minimo ?? 3.95)}" onchange="edSet('${n.id}','minimo',${n.minimo != null ? 'num(this.value)' : 'null'})" ${n.minimo == null ? 'disabled' : ''}><span class="note" style="margin:0">)</span></div>`}
+    ${g ? `<div class="row"><label class="chk"><input type="checkbox" ${n.bono ? 'checked' : ''} onchange="edBono('${n.id}',this.checked)"> Tiene bono opcional</label>${n.bono ? `<input class="inp" style="flex:1;min-width:140px" value="${esc(n.bono.nombre)}" onchange="ED_bono('${n.id}','nombre',this.value)" placeholder="Ej: +0,5 por asistir a talleres"><span>+</span><input class="inp" style="width:60px" value="${fmt2(n.bono.valor)}" onchange="ED_bono('${n.id}','valor',num(this.value))"><span class="note" style="margin:0">décimas en nota</span>` : ''}</div>` : ''}
+    ${raiz ? '' : `<div class="row"><button class="btn sm" onclick="edMover('${n.id}',-1)">↑ Subir</button><button class="btn sm" onclick="edMover('${n.id}',1)">↓ Bajar</button>
+      ${grupos.length ? `<select class="inp" style="width:auto" onchange="if(this.value)edMoverA('${n.id}',this.value)"><option value="">Mover a…</option>${grupos.map(x => `<option value="${x.id}">${x.id === ED.b.raiz.id ? '🏁 ' : '📦 '}${esc(x.nombre)}</option>`).join('')}</select>` : ''}
+      ${!g ? `<button class="btn sm" onclick="edAGrupo('${n.id}')">📦 Convertir en grupo</button>` : `<button class="btn sm" onclick="edDesarmar('${n.id}')">Desarmar grupo</button>`}</div>`}
+  </div>`;
+}
+function eximicionEdHTML(b) {
+  const e = b.eximicion, grupos = nodos(b.raiz).filter(esGrupo);
+  return `<div class="row"><label class="chk"><input type="checkbox" ${e ? 'checked' : ''} onchange="edExim(this.checked)"> Tiene eximición del examen</label>
+    ${e ? `<span class="note" style="margin:0">si</span><select class="inp" style="width:auto" onchange="ED.b.eximicion.parte=this.value">${grupos.map(x => `<option value="${x.id}" ${x.id === e.parte ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>
+      <span class="note" style="margin:0">≥</span><input class="inp" style="width:60px" value="${fmt2(e.umbral)}" onchange="ED.b.eximicion.umbral=num(this.value)">
+      <label class="chk"><input type="checkbox" ${e.sinRojos ? 'checked' : ''} onchange="ED.b.eximicion.sinRojos=this.checked"> y sin notas rojas</label>` : ''}</div>`;
+}
+window.num = v => parseFloat(String(v).replace(',', '.')) || 0;
+const stop = e => { if (e) { e.stopPropagation(); e.preventDefault && e.target.tagName === 'BUTTON' && e.preventDefault(); } };
+window.edSel = (e, id) => { if (e.target.closest('input,button,select,.handle')) return; ED.sel = id; drawEditor(); };
+window.edTog = (e, id) => { stop(e); ED.abiertos.has(id) ? ED.abiertos.delete(id) : ED.abiertos.add(id); drawEditor(); };
+window.edMas = (e, id) => { stop(e); ED.mas.has(id) ? ED.mas.delete(id) : ED.mas.add(id); drawEditor(); };
+window.edSet = (id, k, v) => { const n = edNodo(id); if (!n) return; n[k] = v; if (k === 'nombre') return; drawEditor(); };
+window.ED_bono = (id, k, v) => { const n = edNodo(id); n.bono[k] = v; };
+window.edBono = (id, on) => { const n = edNodo(id); n.bono = on ? { id: 'bono' + uid(), nombre: 'Bono', valor: .5 } : null; drawEditor(); };
+window.edExamen = (id, on) => { nodos(ED.b.raiz).forEach(x => { if (!esGrupo(x)) x.examen = false; }); edNodo(id).examen = on; drawEditor(); };
+window.edExim = on => { const b = ED.b; b.eximicion = on ? { parte: (b.raiz.hijos.find(esGrupo) || b.raiz).id, umbral: 5.5, sinRojos: false } : null; drawEditor(); };
+window.edPeso = (id, v) => { edNodo(id).peso = num(v) / 100; drawEditor(); };
+function insertar(padre, nuevo, idx, w) { // los demás se achican para dejar espacio y seguir sumando 100%
+  const hs = padre.hijos;
+  if (padre.promedio !== 'simple') {
+    const n = hs.length, sum = hs.reduce((a, h) => a + (+h.peso || 0), 0);
+    w = n ? (w ?? 1 / (n + 1)) : 1;
+    if (n && Math.abs(sum - 1) < .001) hs.forEach(h => h.peso = (+h.peso || 0) * (1 - w));
+    nuevo.peso = w;
+  } else nuevo.peso = 1;
+  idx == null ? hs.push(nuevo) : hs.splice(idx, 0, nuevo);
+}
+function quitar(padre, n) { const i = padre.hijos.indexOf(n); padre.hijos.splice(i, 1); if (padre.promedio !== 'simple') { const rest = padre.hijos.reduce((a, h) => a + (+h.peso || 0), 0), antes = rest + (+n.peso || 0); if (rest > 0 && Math.abs(antes - 1) < .001) padre.hijos.forEach(h => h.peso = h.peso / rest); } return i; }
+const contar = (g, re) => nodos(ED.b.raiz).filter(x => !esGrupo(x) && re.test(x.nombre)).length;
+window.edAdd = (pid, tipo) => { const p = edNodo(pid); const n = tipo === 'grupo' ? { id: edNuevoId(), nombre: 'Grupo', tipo: 'grupo', promedio: 'ponderado', hijos: [] } : { id: edNuevoId(), nombre: 'Evaluación', tipo: 'nota' }; insertar(p, n); ED.abiertos.add(p.id); if (tipo === 'grupo') { ED.abiertos.add(n.id); ED.sel = n.id; } drawEditor(); };
+window.edPieza = k => {
+  const p = edNodo(ED.sel) || ED.b.raiz; if (!esGrupo(p)) return;
+  const nota = (nombre, x = {}) => ({ id: edNuevoId(), nombre, tipo: 'nota', ...x });
+  if (k === 'varias') { ED.varias = { n: 3, nombre: 'Control', grupo: true }; return drawEditor(); }
+  let n;
+  if (k === 'nota') n = nota('Evaluación');
+  else if (k === 'grupo') n = { id: edNuevoId(), nombre: 'Grupo', tipo: 'grupo', promedio: 'ponderado', hijos: [] };
+  else if (k === 'interrogacion') n = nota('Interrogación ' + (contar(p, /^interrogaci/i) + 1));
+  else if (k === 'control') n = nota('Control ' + (contar(p, /^control/i) + 1));
+  else if (k === 'tarea') n = nota('Tarea ' + (contar(p, /^tarea/i) + 1));
+  else if (k === 'examen') { nodos(ED.b.raiz).forEach(x => { if (!esGrupo(x)) x.examen = false; }); n = nota('Examen', { examen: true }); }
+  else if (k === 'lab3') n = { id: edNuevoId(), nombre: 'Laboratorio', tipo: 'grupo', promedio: 'simple', hijos: [1, 2, 3].map(i => nota('Laboratorio ' + i)) };
+  insertar(p, n); ED.abiertos.add(p.id); if (esGrupo(n)) ED.abiertos.add(n.id); drawEditor();
+  setTimeout(() => { const el = [...document.querySelectorAll('.blk .nom')].find(i => i.value === n.nombre); el && el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 30);
+};
+window.edVariasOk = () => {
+  const cant = Math.max(1, Math.min(30, parseInt($('vN').value) || 1)), nom = ($('vNom').value || 'Evaluación').trim(), enGrupo = $('vGrupo').checked;
+  const p = edNodo(ED.sel) || ED.b.raiz; const notas = Array.from({ length: cant }, (_, i) => ({ id: edNuevoId(), nombre: nom + ' ' + (i + 1), tipo: 'nota' }));
+  if (enGrupo) { const g = { id: edNuevoId(), nombre: nom.endsWith('s') ? nom : nom + 's', tipo: 'grupo', promedio: 'simple', hijos: notas.map(x => ({ ...x, peso: 1 })) }; insertar(p, g); ED.abiertos.add(g.id); }
+  else notas.forEach(x => insertar(p, x));
+  ED.varias = null; drawEditor();
+};
+window.edDup = (e, id) => { stop(e); const n = edNodo(id), p = edPadre(id); const c = JSON.parse(JSON.stringify(n)); nodos(c).forEach(x => { x.id = edNuevoId(); if (!esGrupo(x)) x.examen = false; }); c.nombre = n.nombre + ' (copia)'; insertar(p, c, p.hijos.indexOf(n) + 1, p.promedio !== 'simple' ? cuota(p, n) : undefined); if (esGrupo(c)) nodos(c).filter(esGrupo).forEach(x => ED.abiertos.add(x.id)); drawEditor(); };
+window.edDel = (e, id) => { stop(e); const n = edNodo(id), p = edPadre(id); if (esGrupo(n) && n.hijos.length && !confirmar('del-' + id, 'Toca ✕ de nuevo para borrar el grupo y todo lo que tiene adentro.')) return; quitar(p, n); if (ED.sel === id) ED.sel = p.id; if (ED.b.eximicion && ED.b.eximicion.parte === id) ED.b.eximicion = null; drawEditor(); };
+window.edMover = (id, dir) => { const p = edPadre(id), i = p.hijos.findIndex(h => h.id === id), j = i + dir; if (j < 0 || j >= p.hijos.length) return; [p.hijos[i], p.hijos[j]] = [p.hijos[j], p.hijos[i]]; drawEditor(); };
+function moverNodo(id, destId, antesDe) { // mover no cambia los pesos de los demás bloques
+  const n = edNodo(id), p = edPadre(id); const dest = edNodo(destId);
+  if (!n || !p || !dest || !esGrupo(dest) || nodos(n).includes(dest)) return false;
+  if (p.promedio === 'simple' && dest.promedio !== 'simple' && (+n.peso === 1 || !n.peso)) n.peso = 0;
+  p.hijos.splice(p.hijos.indexOf(n), 1);
+  let idx = antesDe ? dest.hijos.findIndex(h => h.id === antesDe) : -1;
+  idx < 0 ? dest.hijos.push(n) : dest.hijos.splice(idx, 0, n);
+  ED.abiertos.add(dest.id); return true;
+}
+window.edMoverA = (id, destId) => { if (moverNodo(id, destId)) { ED.mas.delete(id); drawEditor(); toast('Bloque movido'); } };
+window.edAGrupo = id => { const n = edNodo(id); if (n.examen) return toast('El examen no se puede convertir en grupo.'); const hijos = [{ id: edNuevoId(), nombre: n.nombre + ' 1', tipo: 'nota', peso: 1, fecha: n.fecha || null }]; Object.keys(n).forEach(k => { if (!['id', 'nombre', 'peso', 'minimo'].includes(k)) delete n[k]; }); Object.assign(n, { tipo: 'grupo', promedio: 'simple', hijos }); ED.abiertos.add(n.id); ED.sel = n.id; ED.mas.delete(id); drawEditor(); };
+window.edDesarmar = id => { const n = edNodo(id), p = edPadre(id), i = p.hijos.indexOf(n), f = cuota(p, n); const hs = n.hijos.map(h => ({ ...h, peso: f * cuota(n, h) })); p.hijos.splice(i, 1, ...hs); if (p.promedio === 'simple') hs.forEach(h => h.peso = 1); ED.mas.delete(id); drawEditor(); };
+window.edIgual = id => { const g = edNodo(id); g.hijos.forEach(h => h.peso = 1 / g.hijos.length); drawEditor(); };
+window.edAjustar = id => { const g = edNodo(id), s = g.hijos.reduce((a, h) => a + (+h.peso || 0), 0); if (!s) return edIgual(id); g.hijos.forEach(h => h.peso = h.peso / s); drawEditor(); };
+/* Arrastrar y soltar */
+window.edDragStart = (e, id) => { ED.drag = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (x) { } };
+window.edOver = (e, id, dentro) => { if (!ED.drag || ED.drag === id) return; const dest = dentro ? edNodo(id) : edPadre(id); const n = edNodo(ED.drag); if (!dest || nodos(n).includes(dest)) return; e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add('over'); };
+window.edDrop = (e, id, modo) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('over'); const drag = ED.drag; ED.drag = null; if (!drag || drag === id) return; const ok = modo === 'dentro' ? moverNodo(drag, id) : moverNodo(drag, edPadre(id).id, id); if (ok) drawEditor(); };
 
 window.revisarDup = async () => {
-  const b = CREAR.borrador, box = $('dupBox'); if (!box) return;
+  const b = ED.b, box = $('dupBox'); if (!box || !b) return;
   if (!b.sigla && !b.nombre) { box.innerHTML = ''; return; }
   const d = await api.buscarDuplicados(b.sigla, b.nombre);
   box.innerHTML = d.length ? `<div class="warnbox"><b>Ojo: este ramo podría ya existir en el catálogo.</b>
-    ${d.slice(0, 4).map(c => `<div class="row" style="justify-content:space-between;margin-top:6px;color:var(--text)"><span><b>${esc(c.sigla)}</b> · ${esc(c.nombre)} <span class="meta" style="color:var(--muted)">(${esc(c.periodo || '—')} · ${c.motivo})</span></span>
+    ${d.slice(0, 4).map(c => `<div class="row" style="justify-content:space-between;margin-top:6px;color:var(--text)"><span><b>${esc(c.sigla)}</b> · ${esc(c.nombre)} <span style="color:var(--muted)">(${esc(c.periodo || '—')} · ${c.motivo})</span></span>
       ${M(c.id) ? '<span class="pill good">Ya lo tienes</span>' : `<button class="btn sm" onclick="agregarDeCatalogo('${c.id}')">Usar este</button>`}</div>`).join('')}
     <div class="note" style="color:var(--warn)">Si es otro ramo (u otro semestre con un programa distinto), puedes guardarlo igual.</div></div>` : '';
 };
-function validar(b) {
+function validarArbol(b, conDatos) {
   const err = [];
-  if (!b.sigla.trim()) err.push('Falta la sigla.'); if (!b.nombre.trim()) err.push('Falta el nombre.');
-  b.partes.forEach(p => { const s = p.items.reduce((a, it) => a + (+it.peso || 0), 0); if (Math.abs(s - 1) > .001) err.push(`Las evaluaciones de "${p.nombre}" suman ${fmt2(s * 100)}%, deben sumar 100%.`); if (p.items.some(it => !it.nombre.trim())) err.push(`Hay una evaluación sin nombre en "${p.nombre}".`); });
-  if (b.partes.length > 1) { const s = b.partes.reduce((a, p) => a + (+p.peso || 0), 0); if (Math.abs(s - 1) > .001) err.push(`Los componentes suman ${fmt2(s * 100)}%, deben sumar 100%.`); }
-  return err;
+  if (conDatos) { if (!String(b.sigla).trim()) err.push('Falta la sigla.'); if (!String(b.nombre).trim()) err.push('Falta el nombre.'); }
+  if (!hojas(b.raiz).length) err.push('Agrega al menos una evaluación.');
+  nodos(b.raiz).forEach(n => {
+    if (!String(n.nombre).trim()) err.push('Hay un bloque sin nombre.');
+    if (esGrupo(n)) {
+      if (!n.hijos.length) err.push(`El grupo "${n.nombre}" está vacío.`);
+      else if (n.promedio !== 'simple') { const s = n.hijos.reduce((a, h) => a + (+h.peso || 0), 0); if (Math.abs(s - 1) > .001) err.push(`En "${n.nombre}" los pesos suman ${fmt2(s * 100)}%, deben sumar 100% (usa "Ajustar a 100%").`); }
+    }
+  });
+  if (hojas(b.raiz).filter(h => h.examen).length > 1) err.push('Solo puede haber un examen final.');
+  return [...new Set(err)];
 }
+const defDe = b => ({ version: 2, raiz: b.raiz, eximicion: b.eximicion || null, reglas: b.reglas || [], dudas: [] });
+function mostrarErr(err) { $('guardarErr').innerHTML = `<div class="errbox">${err.map(esc).join('<br>')}</div>`; $('guardarErr').scrollIntoView({ block: 'center', behavior: 'smooth' }); }
 window.guardarRamo = async () => {
-  const b = CREAR.borrador, err = validar(b);
-  if (err.length) { $('guardarErr').innerHTML = `<div class="errbox">${err.map(esc).join('<br>')}</div>`; return; }
+  const b = ED.b, err = validarArbol(b, true);
+  if (err.length) return mostrarErr(err);
   const exacto = CATALOGO.find(c => normSigla(c.sigla) === normSigla(b.sigla) && String(c.periodo || '') === String(b.periodo || '') && normTxt(c.universidad) === normTxt(b.universidad));
-  if (exacto) { $('guardarErr').innerHTML = `<div class="errbox">Ya existe ${esc(exacto.sigla)} para el período ${esc(exacto.periodo)}. Usa ese (botón "Usar este" arriba) o cambia el período.</div>`; return; }
+  if (exacto) return mostrarErr([`Ya existe ${exacto.sigla} para el período ${exacto.periodo}. Usa ese ("Usar este" arriba) o cambia el período.`]);
   const btn = $('btnGuardar'); btn.disabled = true; btn.textContent = 'Guardando…';
-  const def = { combinacion: b.partes.length > 1 ? b.combinacion : 'ponderado', eximicion: b.eximicion || null, partes: b.partes, reglas: b.reglas, dudas: [] };
   try {
-    const row = await api.crearRamo({ sigla: b.sigla.trim().toUpperCase(), nombre: b.nombre.trim(), universidad: b.universidad.trim() || 'UC', periodo: b.periodo.trim(), carrera: (b.carrera || '').trim(), fuente: b.fuente || 'Agregado por la comunidad', def });
+    const row = await api.crearRamo({ sigla: b.sigla.trim().toUpperCase(), nombre: b.nombre.trim(), universidad: b.universidad.trim() || 'UC', periodo: String(b.periodo).trim(), carrera: (b.carrera || '').trim(), fuente: b.fuente || 'Agregado por la comunidad', def: defDe(b) });
     await api.inscribir(row.id); closeModal(); go('ramo-' + row.id); toast('Ramo creado y compartido con la comunidad');
-  } catch (e) { $('guardarErr').innerHTML = `<div class="errbox">${esc(e.message)}</div>`; btn.disabled = false; btn.textContent = 'Guardar y agregar a mis ramos'; }
+  } catch (e) { mostrarErr([e.message]); btn.disabled = false; btn.textContent = 'Guardar y agregar a mis ramos'; }
+};
+window.guardarEdicion = async paraTodos => {
+  const b = ED.b, err = validarArbol(b, false); if (err.length) return mostrarErr(err);
+  const def = defDe(b), rid = ED.rid;
+  try {
+    if (paraTodos) { await api.actualizarRamo(rid, def); M(rid).override = null; }
+    else M(rid).override = def;
+    api.guardar(rid); closeModal(); render(); toast(paraTodos ? 'Ramo actualizado para todos' : 'Cambios guardados para ti');
+  } catch (e) { mostrarErr([e.message]); }
 };
 
 /* Dictado por voz (Web Speech API del navegador) */
