@@ -2,7 +2,7 @@
 // La API key de Claude NUNCA va acá: va en las variables de entorno de Vercel (ANTHROPIC_API_KEY).
 // Si supabaseUrl está vacío, la app funciona en "modo demo" (datos guardados solo en este navegador).
 window.APP_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://ezjrbgfawyrpehrtgobd.supabase.co',
+  supabaseAnonKey: 'sb_publishable_moBelKQgvQMLpA85dRzDtw_usjtuUkr',
   apiUrl: '/api/extraer'
 };
