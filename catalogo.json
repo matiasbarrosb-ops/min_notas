@@ -1457,5 +1457,966 @@
     "El laboratorio vale 30% de la nota final de Dinámica (FIS1514)."
    ]
   }
+ },
+ {
+  "sigla": "EAF2010",
+  "nombre": "Aplicaciones Matemáticas para Economía y Negocios",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAF2010 2026-2",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "c1",
+       "nombre": "Control 1",
+       "peso": 0.1
+      },
+      {
+       "id": "c2",
+       "nombre": "Control 2",
+       "peso": 0.1
+      },
+      {
+       "id": "c3",
+       "nombre": "Control 3",
+       "peso": 0.1
+      },
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF* = 10% c/control + 20% c/interrogación + 30% examen.",
+    "Bono de participación: si NF* ≥ 3,95 y la nota de participación es mayor, NF = 0,9·NF* + 0,1·Participación.",
+    "Solo se puede justificar una de las dos interrogaciones. Para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAE2510",
+  "nombre": "Econometría",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa Econometría 2026-2",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "cr",
+       "nombre": "Control de repaso",
+       "peso": 0.05
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.2
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.2
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.25,
+       "examen": true
+      },
+      {
+       "id": "t1",
+       "nombre": "Tarea 1 (grupal + control)",
+       "peso": 0.1
+      },
+      {
+       "id": "t2",
+       "nombre": "Tarea 2 (grupal + control)",
+       "peso": 0.1
+      },
+      {
+       "id": "part",
+       "nombre": "Participación",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Control de repaso 5%, pruebas 20% c/u, examen 25%, tareas 10% c/u (5% entrega grupal + 5% control), participación 10%.",
+    "La participación parte del promedio de controles y puede subir hasta 40% (tope 7,0)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA2410",
+  "nombre": "Estrategia de la Organización",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa 2026",
+  "def": {
+   "dudas": [
+    "El programa dice \"Pruebas I & II 25%\": se interpretó como 25% cada una para que sume 100%."
+   ],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "p1",
+       "nombre": "Prueba I",
+       "peso": 0.25
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba II",
+       "peso": 0.25
+      },
+      {
+       "id": "tc",
+       "nombre": "Tareas y controles",
+       "peso": 0.2
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen final",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Pruebas 25% c/u, tareas y controles 20%, examen 30%.",
+    "Para rendir examen: nota de presentación ≥ 3,0 y para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA2310",
+  "nombre": "Fundamentos de Marketing",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAA2310 2º sem 2026 (sec. 4)",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "ctr",
+       "nombre": "Controles de casos y lecturas (4)",
+       "peso": 0.2,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1",
+         "fecha": "2026-08-28"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2",
+         "fecha": "2026-09-25"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3",
+         "fecha": "2026-10-16"
+        },
+        {
+         "id": "c4",
+         "nombre": "Control 4",
+         "fecha": "2026-11-13"
+        }
+       ]
+      },
+      {
+       "id": "tc",
+       "nombre": "Trabajos en clase",
+       "peso": 0.1
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba I",
+       "peso": 0.15,
+       "fecha": "2026-09-09"
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba II",
+       "peso": 0.15
+      },
+      {
+       "id": "sim",
+       "nombre": "Simulaciones Harvard",
+       "peso": 0.1
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen final",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Controles 20%, trabajos en clase 10%, pruebas 15% c/u, simulaciones 10%, examen 30%.",
+    "Para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "IIC1103",
+  "nombre": "Introducción a la Programación",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa IIC1103 2026-2",
+  "def": {
+   "dudas": [],
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "pe",
+     "nombre": "Pruebas (I1, I2, Examen)",
+     "peso": 0.65,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.23076923076923078
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.3076923076923077
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.46153846153846156,
+       "examen": true
+      }
+     ]
+    },
+    {
+     "id": "ot",
+     "nombre": "Tareas y participación",
+     "peso": 0.35,
+     "items": [
+      {
+       "id": "t1",
+       "nombre": "Tarea 1",
+       "peso": 0.14285714285714285
+      },
+      {
+       "id": "t2",
+       "nombre": "Tarea 2",
+       "peso": 0.14285714285714285
+      },
+      {
+       "id": "t3",
+       "nombre": "Tarea 3",
+       "peso": 0.14285714285714285
+      },
+      {
+       "id": "np",
+       "nombre": "Nota de participación",
+       "peso": 0.45714285714285713
+      },
+      {
+       "id": "tia",
+       "nombre": "Talleres de IA",
+       "peso": 0.11428571428571428
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 15% I1 + 20% I2 + 30% Ex + 5% c/tarea + 16% participación + 4% talleres de IA.",
+    "El promedio ponderado de I1, I2 y examen debe ser ≥ 4,0; si no, la nota final es el mínimo entre NF y 3,9."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA1110",
+  "nombre": "Comportamiento Organizacional",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAA1110 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "np",
+     "nombre": "Nota de presentación",
+     "peso": 0.7,
+     "items": [
+      {
+       "id": "cl",
+       "nombre": "Controles de lectura (4)",
+       "peso": 0.2857142857142857,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        },
+        {
+         "id": "c4",
+         "nombre": "Control 4"
+        }
+       ]
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.2857142857142857
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.2857142857142857
+      },
+      {
+       "id": "part",
+       "nombre": "Participación",
+       "peso": 0.14285714285714285
+      }
+     ]
+    },
+    {
+     "id": "exp",
+     "nombre": "Examen",
+     "peso": 0.3,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 1,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Controles de lectura 20%, pruebas 20% c/u, participación 10%, examen 30% (reprobatorio).",
+    "Para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA1210",
+  "nombre": "Contabilidad I",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa Contabilidad I 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.2
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.2
+      },
+      {
+       "id": "ctr",
+       "nombre": "Controles (3)",
+       "peso": 0.24,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        }
+       ]
+      },
+      {
+       "id": "sor",
+       "nombre": "Controles sorpresa (promedio)",
+       "peso": 0.06
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen final",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Pruebas 20% c/u, 3 controles 8% c/u, controles sorpresa 6%, examen 30%.",
+    "Las tareas y el bono final suman puntaje extra (no incluidos)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAE1110",
+  "nombre": "Introducción a la Microeconomía",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAE1110 1S 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "te",
+       "nombre": "Trabajo en equipo",
+       "peso": 0.05
+      },
+      {
+       "id": "c1",
+       "nombre": "Control 1",
+       "peso": 0.1
+      },
+      {
+       "id": "c2",
+       "nombre": "Control 2",
+       "peso": 0.1
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.225
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.225
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Trabajo en equipo 5%, controles 10% c/u, pruebas 22,5% c/u, examen 30%.",
+    "Para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "MAT1279",
+  "nombre": "Introducción al Álgebra Lineal",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Normativa MAT1279/MAT1299",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.23,
+       "fecha": "2025-09-04"
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.23,
+       "fecha": "2025-10-14"
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.24,
+       "fecha": "2025-11-11"
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen final",
+       "peso": 0.3,
+       "fecha": "2025-12-11",
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "I1 23%, I2 23%, I3 24%, examen 30%."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA1510",
+  "nombre": "Probabilidad y Estadística",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAA1510 2º sem 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "c1",
+       "nombre": "Control 1",
+       "peso": 0.1,
+       "fecha": "2025-09-05"
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.2,
+       "fecha": "2025-09-30"
+      },
+      {
+       "id": "c2",
+       "nombre": "Control 2",
+       "peso": 0.1,
+       "fecha": "2025-10-10"
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.2,
+       "fecha": "2025-11-06"
+      },
+      {
+       "id": "c3",
+       "nombre": "Control 3",
+       "peso": 0.1
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Controles 10% c/u, pruebas 20% c/u, examen 30%.",
+    "Para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAE1210",
+  "nombre": "Introducción a la Macroeconomía",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAE1210 2025-2",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "c1",
+       "nombre": "Control 1",
+       "peso": 0.12,
+       "fecha": "2025-09-03"
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.24,
+       "fecha": "2025-09-24"
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.24,
+       "fecha": "2025-10-29"
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.32,
+       "fecha": "2025-12-09",
+       "examen": true
+      },
+      {
+       "id": "pf",
+       "nombre": "Pregunta del profesor",
+       "peso": 0.08
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Control 12%, pruebas 24% c/u, examen 32%, pregunta del profesor 8%."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA1520",
+  "nombre": "Inferencia Estadística",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa EAA1520 1S 2026",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "ctr",
+       "nombre": "Controles (promedio + bonos)",
+       "peso": 0.3,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        }
+       ]
+      },
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,3·promedio controles + 0,2·I1 + 0,2·I2 + 0,3·Ex.",
+    "Los bonos de ayudantía se suman al promedio de controles.",
+    "Para rendir el examen hay que haber sido evaluado en al menos 50% del curso (sin contar el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAE1220",
+  "nombre": "Análisis Económico: Experiencia Chilena",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa ANE 1S 2026",
+  "def": {
+   "dudas": [
+    "Las ponderaciones del programa suman 105% (parte es voluntaria); aquí se ajustaron para que sumen 100%."
+   ],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "trb",
+       "nombre": "Trabajo",
+       "peso": 0.23809523809523808
+      },
+      {
+       "id": "cre",
+       "nombre": "Control de repaso",
+       "peso": 0.047619047619047616
+      },
+      {
+       "id": "cl",
+       "nombre": "Controles de lectura (4)",
+       "peso": 0.14285714285714285,
+       "sub": [
+        {
+         "id": "cl1",
+         "nombre": "Control de lectura 1"
+        },
+        {
+         "id": "cl2",
+         "nombre": "Control de lectura 2"
+        },
+        {
+         "id": "cl3",
+         "nombre": "Control de lectura 3"
+        },
+        {
+         "id": "cl4",
+         "nombre": "Control de lectura 4"
+        }
+       ]
+      },
+      {
+       "id": "pr",
+       "nombre": "Pruebas (2)",
+       "peso": 0.23809523809523808,
+       "sub": [
+        {
+         "id": "pr1",
+         "nombre": "Prueba 1"
+        },
+        {
+         "id": "pr2",
+         "nombre": "Prueba 2"
+        }
+       ]
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.23809523809523808,
+       "examen": true
+      },
+      {
+       "id": "act",
+       "nombre": "Actividad regular",
+       "peso": 0.09523809523809523
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Trabajo 25%, control de repaso 5%, controles de lectura 15%, pruebas 25%, examen 25%, actividad regular 10% (suman 105%).",
+    "Bonos de hasta 0,1 por controles y asistencia a ayudantía."
+   ]
+  }
+ },
+ {
+  "sigla": "EAA1220",
+  "nombre": "Fundamentos de Finanzas",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Syllabus EAA1220 2026",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "s1",
+     "nombre": "Subtotal 1",
+     "peso": 0.9,
+     "items": [
+      {
+       "id": "ctr",
+       "nombre": "Controles (3)",
+       "peso": 0.3,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        }
+       ]
+      },
+      {
+       "id": "pr",
+       "nombre": "Pruebas (2)",
+       "peso": 0.3,
+       "sub": [
+        {
+         "id": "p1",
+         "nombre": "Prueba 1"
+        },
+        {
+         "id": "p2",
+         "nombre": "Prueba 2"
+        }
+       ]
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.35,
+       "examen": true
+      },
+      {
+       "id": "part",
+       "nombre": "Participación",
+       "peso": 0.05
+      }
+     ]
+    },
+    {
+     "id": "s2",
+     "nombre": "Subtotal 2",
+     "peso": 0.1,
+     "items": [
+      {
+       "id": "part2",
+       "nombre": "Participación",
+       "peso": 0.6
+      },
+      {
+       "id": "xl",
+       "nombre": "Tarea Excel",
+       "peso": 0.4
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Subtotal 1: controles 30%, pruebas 30%, examen 35%, participación 5%.",
+    "Subtotal 2: participación 60%, tarea Excel 40%. NF = 0,9·ST1 + 0,1·ST2.",
+    "Se necesita al menos 3,0 en el examen; si no, la nota final es 3,9.",
+    "Con 85% de asistencia, el subtotal 2 no puede bajarte la nota."
+   ]
+  }
+ },
+ {
+  "sigla": "TTF118",
+  "nombre": "Esperanza Cristiana: Muerte y Más Allá",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "Ingeniería Comercial",
+  "fuente": "Programa TTF118 2026",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "f1",
+       "nombre": "Foro Unidad I",
+       "peso": 0.2
+      },
+      {
+       "id": "f2",
+       "nombre": "Foro Unidad II",
+       "peso": 0.3
+      },
+      {
+       "id": "f3",
+       "nombre": "Foro Unidad III",
+       "peso": 0.2
+      },
+      {
+       "id": "inf",
+       "nombre": "Informe final",
+       "peso": 0.3
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Foros 20%, 30% y 20%, informe final 30%.",
+    "Se exige 75% de asistencia."
+   ]
+  }
  }
 ]
