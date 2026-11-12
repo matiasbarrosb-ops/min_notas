@@ -277,21 +277,40 @@ window.toggleTheme = () => { const d = document.documentElement; const cur = d.d
 window.salir = async () => { await api.logout(); };
 
 /* ============================================================ LOGIN */
+let LOGIN_MODO = 'entrar';
 function renderLogin() {
+  const crear = LOGIN_MODO === 'crear';
   app.innerHTML = `<div class="card login">
-    <h2 style="margin:0 0 6px;font-size:22px">Entra a Mis Notas</h2>
+    <h2 style="margin:0 0 6px;font-size:22px">${crear ? 'Crea tu cuenta' : 'Entra a Mis Notas'}</h2>
     <p style="color:var(--text-2);margin:0 0 16px">Agrega tus ramos, pon tus notas y ve cuánto necesitas en el examen.</p>
-    <form onsubmit="event.preventDefault();enviarLink()">
+    <div class="seg" style="margin-bottom:14px"><button class="${!crear ? 'on' : ''}" onclick="setLoginModo('entrar')">Entrar</button><button class="${crear ? 'on' : ''}" onclick="setLoginModo('crear')">Crear cuenta</button></div>
+    <form onsubmit="event.preventDefault();enviarLogin()">
       <div class="field"><label>Tu correo</label><input id="email" type="email" required placeholder="nombre@uc.cl" autocomplete="email"></div>
-      <button class="btn primary" style="width:100%" id="btnLogin">Enviarme un link para entrar</button>
+      <div class="field"><label>Contraseña${crear ? ' (mínimo 6 caracteres)' : ''}</label><input id="pass" type="password" required minlength="6" autocomplete="${crear ? 'new-password' : 'current-password'}"></div>
+      <button class="btn primary" style="width:100%" id="btnLogin">${crear ? 'Crear cuenta' : 'Entrar'}</button>
     </form>
-    <div id="loginMsg" class="note"></div></div>`;
+    <div id="loginMsg" class="note"></div>
+    ${!crear ? `<div class="note"><a href="#" onclick="linkPorCorreo();return false">Olvidé mi contraseña / entrar con un link por correo</a></div>` : ''}</div>`;
 }
-window.enviarLink = async () => {
-  const email = $('email').value.trim(); const b = $('btnLogin'); b.disabled = true; b.textContent = 'Enviando…';
-  try { await api.login(email); $('loginMsg').innerHTML = `Listo. Revisa tu correo (<b>${esc(email)}</b>) y abre el link para entrar.`; }
-  catch (e) { $('loginMsg').innerHTML = `<div class="errbox">${esc(e.message)}</div>`; }
-  b.disabled = false; b.textContent = 'Enviarme un link para entrar';
+window.setLoginModo = m => { LOGIN_MODO = m; renderLogin(); };
+const traducir = m => /invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : /already registered|already exists/i.test(m) ? 'Ese correo ya tiene cuenta: usa "Entrar".' : /rate limit/i.test(m) ? 'Se enviaron demasiados correos. Espera un rato e intenta de nuevo.' : /not confirmed/i.test(m) ? 'Falta confirmar tu correo: revisa tu bandeja de entrada.' : m;
+window.enviarLogin = async () => {
+  const email = $('email').value.trim(), password = $('pass').value, b = $('btnLogin'); b.disabled = true;
+  try {
+    if (LOGIN_MODO === 'crear') {
+      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      if (!data.session) $('loginMsg').innerHTML = `Te mandamos un correo a <b>${esc(email)}</b> para confirmar tu cuenta.`;
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password }); if (error) throw error;
+    }
+  } catch (e) { $('loginMsg').innerHTML = `<div class="errbox">${esc(traducir(e.message))}</div>`; }
+  b.disabled = false;
+};
+window.linkPorCorreo = async () => {
+  const email = $('email').value.trim(); if (!email) { $('loginMsg').innerHTML = '<div class="errbox">Escribe tu correo arriba primero.</div>'; return; }
+  try { await api.login(email); $('loginMsg').innerHTML = `Te mandamos un link a <b>${esc(email)}</b>. Al entrar, puedes seguir usando la app.`; }
+  catch (e) { $('loginMsg').innerHTML = `<div class="errbox">${esc(traducir(e.message))}</div>`; }
 };
 
 /* ============================================================ INICIO */
