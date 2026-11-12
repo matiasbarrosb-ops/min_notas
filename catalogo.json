@@ -1,0 +1,1461 @@
+[
+ {
+  "sigla": "MAT1630",
+  "nombre": "Cálculo III",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería",
+  "fuente": "Página de inicio del curso en Canvas",
+  "def": {
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2,
+       "fecha": "2026-09-08",
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2,
+       "fecha": "2026-10-14",
+       "reemplazable": true
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2,
+       "fecha": "2026-11-10",
+       "reemplazable": true
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "fecha": "2026-12-03",
+       "examen": true
+      },
+      {
+       "id": "lab",
+       "nombre": "Laboratorio",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,2·(I1+I2+I3) + 0,3·Ex + 0,1·Lab",
+    "Si faltas justificado a una interrogación, se reemplaza por el examen.",
+    "Sin calculadora ni apuntes en las pruebas."
+   ]
+  }
+ },
+ {
+  "sigla": "MAT1640",
+  "nombre": "Ecuaciones Diferenciales",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería",
+  "fuente": "Normativa y Clase a clase (Canvas); ponderaciones confirmadas por ti",
+  "def": {
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2,
+       "fecha": "2026-09-09",
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2,
+       "fecha": "2026-10-15",
+       "reemplazable": true
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2,
+       "fecha": "2026-11-11",
+       "reemplazable": true
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "fecha": "2026-12-09",
+       "examen": true
+      },
+      {
+       "id": "lab",
+       "nombre": "Laboratorio",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,2·(I1+I2+I3) + 0,3·Ex + 0,1·Lab (igual que Cálculo III)",
+    "Si faltas justificado a una interrogación, se reemplaza por el examen.",
+    "Sin justificación, la evaluación queda con 1,0."
+   ]
+  }
+ },
+ {
+  "sigla": "FIS1514",
+  "nombre": "Dinámica",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería",
+  "fuente": "Programa y reglas FIS1514 2026-2 (secciones 9 y 10)",
+  "def": {
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "cat",
+     "nombre": "Cátedra (NFC)",
+     "peso": 0.7,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.25,
+       "fecha": "2026-09-29",
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.25,
+       "fecha": "2026-11-13",
+       "reemplazable": true
+      },
+      {
+       "id": "nc",
+       "nombre": "Controles (promedio)",
+       "peso": 0.2,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1",
+         "fecha": "2026-08-28"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2",
+         "fecha": "2026-10-09"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3",
+         "fecha": "2026-11-06"
+        }
+       ],
+       "bono": {
+        "id": "taller",
+        "nombre": "+0,5 por asistir a ≥8 talleres",
+        "valor": 0.5
+       }
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "fecha": "2026-12-01",
+       "examen": true
+      }
+     ]
+    },
+    {
+     "id": "lab",
+     "nombre": "Laboratorio (NL)",
+     "peso": 0.3,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "nl",
+       "nombre": "Nota de laboratorio",
+       "peso": 1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NFC = 0,25·I1 + 0,25·I2 + 0,2·NC + 0,3·Ex",
+    "Si NL ≥ 4,0 y NFC ≥ 4,0: NF = 0,7·NFC + 0,3·NL. Si no: NF = mín(NFC, NL).",
+    "No hay eximición del examen.",
+    "Con ≥ 8 talleres asistidos se suman 5 décimas al promedio de controles."
+   ]
+  }
+ },
+ {
+  "sigla": "IIQ1003",
+  "nombre": "Termodinámica",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería",
+  "fuente": "Programa del curso IIQ1003, 2º sem 2026 + Lab FIS0152",
+  "def": {
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "cat",
+     "nombre": "Cátedra (NC)",
+     "peso": 0.7,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1 (con décimas)",
+       "peso": 0.3,
+       "fecha": "2026-09-22"
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2 (con décimas)",
+       "peso": 0.3,
+       "fecha": "2026-11-06"
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.4,
+       "fecha": "2026-12-11",
+       "examen": true
+      }
+     ],
+     "bonoParte": {
+      "id": "encuesta",
+      "nombre": "+0,2 por contestar >85% de las encuestas de carga",
+      "valor": 0.2
+     }
+    },
+    {
+     "id": "lab",
+     "nombre": "Lab. de Termodinámica (FIS0152)",
+     "peso": 0.3,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "nl",
+       "nombre": "Nota final de laboratorio",
+       "peso": 1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NC = 0,3·I1 + 0,3·I2 + 0,4·Ex",
+    "NC y NL deben ser ≥ 3,95 por separado; si no, repruebas con la nota del ítem reprobado.",
+    "NF = 0,7·NC + 0,3·NL",
+    "Cada taller sorpresa da hasta 6 décimas en la interrogación correspondiente (ingresa la I con décimas).",
+    "Lab: nota ≥ 4,0 y promedio de evaluación de pares ≥ 4,0. Máximo 1 inasistencia justificada."
+   ]
+  }
+ },
+ {
+  "sigla": "TTF026",
+  "nombre": "Introducción a la Biblia",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería",
+  "fuente": "Anuncios y libro de calificaciones (Canvas)",
+  "def": {
+   "porConfirmar": true,
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.3
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.3,
+       "fecha": "2026-10-27"
+      },
+      {
+       "id": "p3",
+       "nombre": "Prueba 3",
+       "peso": 0.3,
+       "examen": true
+      },
+      {
+       "id": "cue",
+       "nombre": "Cuestionarios",
+       "peso": 0.05
+      },
+      {
+       "id": "par",
+       "nombre": "Participación en clases",
+       "peso": 0.05
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Pruebas 90% (la Prueba 1 vale 30%; se asume 30% cada una), cuestionarios 5% y participación 5%.",
+    "El programa está en Dropbox y no lo pude abrir: confirma las ponderaciones."
+   ]
+  }
+ },
+ {
+  "sigla": "ARO107I",
+  "nombre": "Arte, Paisajes y Geografía",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Ingeniería",
+  "fuente": "Tareas y anuncios (Canvas)",
+  "def": {
+   "porConfirmar": true,
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "e1",
+       "nombre": "Evaluación 1: Diseño \"Búsqueda de un Destino\"",
+       "peso": 0.3333333333333333,
+       "fecha": "2026-09-30"
+      },
+      {
+       "id": "e2",
+       "nombre": "Evaluación 2: Búsqueda de un Destino, 2ª parte",
+       "peso": 0.3333333333333333,
+       "fecha": "2026-11-02"
+      },
+      {
+       "id": "e3",
+       "nombre": "Evaluación final",
+       "peso": 0.3333333333333333,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "El curso no publica ponderaciones en Canvas: se asumió un tercio cada evaluación.",
+    "Se aceptan hasta 3 inasistencias; con la 4ª se reprueba."
+   ]
+  }
+ },
+ {
+  "sigla": "MET403A",
+  "nombre": "Alteraciones del Sistema Nervioso",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Terapia Ocupacional",
+  "fuente": "Programa del curso Alteraciones del SNC 2026",
+  "def": {
+   "combinacion": "minimos",
+   "eximicion": {
+    "parte": "np",
+    "umbral": 5.5
+   },
+   "partes": [
+    {
+     "id": "np",
+     "nombre": "Nota de presentación",
+     "peso": 0.7,
+     "items": [
+      {
+       "id": "c1",
+       "nombre": "Control escrito 1",
+       "peso": 0.2
+      },
+      {
+       "id": "c2",
+       "nombre": "Control escrito 2",
+       "peso": 0.2
+      },
+      {
+       "id": "c3",
+       "nombre": "Control escrito 3",
+       "peso": 0.2
+      },
+      {
+       "id": "ter",
+       "nombre": "Actividad práctica en terreno",
+       "peso": 0.15
+      },
+      {
+       "id": "sem",
+       "nombre": "Seminarios (promedio de 5)",
+       "peso": 0.25,
+       "sub": [
+        {
+         "id": "s1",
+         "nombre": "Seminario 1"
+        },
+        {
+         "id": "s2",
+         "nombre": "Seminario 2"
+        },
+        {
+         "id": "s3",
+         "nombre": "Seminario 3"
+        },
+        {
+         "id": "s4",
+         "nombre": "Seminario 4"
+        },
+        {
+         "id": "s5",
+         "nombre": "Seminario 5"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "exp",
+     "nombre": "Examen",
+     "peso": 0.3,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "ex",
+       "nombre": "Examen final",
+       "peso": 1,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NP = 20% c/control (3) + 15% actividad en terreno + 25% seminarios (5% c/u).",
+    "NF = 0,7·NP + 0,3·Examen. El examen es reprobatorio: necesita ≥ 4,0.",
+    "Eximición con NP ≥ 5,5: la nota final es la NP (puede rendirlo igual si quiere).",
+    "Se exige 100% de asistencia a seminarios; si no, reprueba con 3,9.",
+    "Si falta justificado a una prueba, rinde una recuperativa (no se reemplaza por el examen)."
+   ]
+  }
+ },
+ {
+  "sigla": "MET402A",
+  "nombre": "Bioestadística",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Terapia Ocupacional",
+  "fuente": "Programa Bioestadística MET402A 2026",
+  "def": {
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.25
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.25
+      },
+      {
+       "id": "po",
+       "nombre": "Presentaciones orales",
+       "peso": 0.15
+      },
+      {
+       "id": "tp",
+       "nombre": "Trabajos prácticos",
+       "peso": 0.1
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.25,
+       "fecha": "2026-12-09",
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,15·PO + 0,10·TP + 0,25·I1 + 0,25·I2 + 0,25·Ex",
+    "No hay eximición.",
+    "Solo se puede faltar (justificado) a una evaluación; con dos se reprueba.",
+    "Hay que llenar la evaluación de pares hasta una semana después de presentar, o queda con nota mínima."
+   ]
+  }
+ },
+ {
+  "sigla": "EDU222B",
+  "nombre": "Cerrando Brechas Educativas",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Terapia Ocupacional",
+  "fuente": "Programa EDU222B 2026",
+  "def": {
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "as",
+       "nombre": "Implementación A+S (mín. 14 tutorías)",
+       "peso": 0.5
+      },
+      {
+       "id": "ref",
+       "nombre": "Reflexión final (bitácoras)",
+       "peso": 0.2
+      },
+      {
+       "id": "cbe",
+       "nombre": "Propuesta de solución CBE (grupal)",
+       "peso": 0.2
+      },
+      {
+       "id": "tk",
+       "nombre": "Tickets de salida (7)",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "50% implementación A+S, 20% reflexión final, 20% propuesta CBE, 10% tickets de salida.",
+    "Las bitácoras no llevan nota: son requisito para la reflexión final."
+   ]
+  }
+ },
+ {
+  "sigla": "MET401A",
+  "nombre": "Farmacología",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Terapia Ocupacional",
+  "fuente": "Programa del curso Farmacología",
+  "def": {
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "p1",
+       "nombre": "Prueba I",
+       "peso": 0.2333333333333333
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba II",
+       "peso": 0.2333333333333333
+      },
+      {
+       "id": "p3",
+       "nombre": "Prueba III",
+       "peso": 0.2333333333333333
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen final",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Interrogaciones 70% (las tres pesan igual) y examen 30%.",
+    "Nota mínima de aprobación 4,0."
+   ]
+  }
+ },
+ {
+  "sigla": "FIS109A",
+  "nombre": "Física",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Terapia Ocupacional",
+  "fuente": "Programa FIS109A (sin ponderaciones) y planilla de notas",
+  "def": {
+   "porConfirmar": true,
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2,
+       "fecha": "2026-09-08"
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2,
+       "fecha": "2026-11-13"
+      },
+      {
+       "id": "nc",
+       "nombre": "Controles (promedio)",
+       "peso": 0.1,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        }
+       ]
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "El programa solo dice \"pruebas integrales, controles y examen\", sin porcentajes. Se asumió 20% c/interrogación, 10% controles y 30% examen: confírmalo."
+   ]
+  }
+ },
+ {
+  "sigla": "OCU401A",
+  "nombre": "Habilidades y Técnicas Terapéuticas II",
+  "universidad": "UC",
+  "periodo": "2026-2",
+  "carrera": "Terapia Ocupacional",
+  "fuente": "Programa HTT2 2026",
+  "def": {
+   "combinacion": "minimos",
+   "eximicion": {
+    "parte": "np",
+    "umbral": 5.95,
+    "sinRojos": true
+   },
+   "partes": [
+    {
+     "id": "np",
+     "nombre": "Nota de presentación",
+     "peso": 0.7,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "e1",
+       "nombre": "Certamen",
+       "peso": 0.25,
+       "fecha": "2026-09-25"
+      },
+      {
+       "id": "e2",
+       "nombre": "Trabajo práctico en sala",
+       "peso": 0.15,
+       "fecha": "2026-10-02"
+      },
+      {
+       "id": "e3",
+       "nombre": "Propuesta de intervención (grupal)",
+       "peso": 0.1,
+       "fecha": "2026-10-23"
+      },
+      {
+       "id": "e4",
+       "nombre": "Informe de intervención (grupal)",
+       "peso": 0.15,
+       "fecha": "2026-11-20"
+      },
+      {
+       "id": "e5",
+       "nombre": "Evaluación de desempeño A+S",
+       "peso": 0.25,
+       "fecha": "2026-11-20"
+      },
+      {
+       "id": "e6",
+       "nombre": "Presentación final",
+       "peso": 0.1,
+       "fecha": "2026-11-27"
+      }
+     ]
+    },
+    {
+     "id": "exp",
+     "nombre": "Examen",
+     "peso": 0.3,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 1,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NP: certamen 25%, trabajo práctico 15%, propuesta 10%, informe 15%, desempeño A+S 25%, presentación final 10%.",
+    "Para rendir examen se necesita NP ≥ 4,0; si no, reprueba.",
+    "NF = 0,7·NP + 0,3·Examen. El examen es reprobatorio: necesita ≥ 4,0.",
+    "Eximición: NP ≥ 6,0 (desde 5,95), ninguna nota bajo 4,0 y asistencia mínima.",
+    "Máximo 20% de inasistencias a actividades prácticas, aunque estén justificadas."
+   ]
+  }
+ },
+ {
+  "sigla": "MAT1610",
+  "nombre": "Cálculo I",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Ingeniería",
+  "fuente": "Contenidos y reglas MAT1610 2025-2",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      },
+      {
+       "id": "lab",
+       "nombre": "Laboratorio",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,1·Lab + 0,2·(I1+I2+I3) + 0,3·Ex",
+    "Si faltas justificado a una interrogación, se reemplaza por el examen."
+   ]
+  }
+ },
+ {
+  "sigla": "MAT1620",
+  "nombre": "Cálculo II",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "Ingeniería",
+  "fuente": "Supuesto: mismo esquema de la Facultad de Matemáticas",
+  "def": {
+   "dudas": [
+    "No encontré el programa con ponderaciones en Canvas: se asumió el mismo esquema que Cálculo I y III."
+   ],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      },
+      {
+       "id": "lab",
+       "nombre": "Laboratorio",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,1·Lab + 0,2·(I1+I2+I3) + 0,3·Ex",
+    "Si faltas justificado a una interrogación, se reemplaza por el examen."
+   ]
+  }
+ },
+ {
+  "sigla": "MAT1203",
+  "nombre": "Álgebra Lineal",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Ingeniería",
+  "fuente": "Supuesto: mismo esquema de la Facultad de Matemáticas",
+  "def": {
+   "dudas": [
+    "No encontré el programa con ponderaciones en Canvas: se asumió el esquema de Cálculo (confirmar si tiene laboratorio)."
+   ],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2,
+       "reemplazable": true
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      },
+      {
+       "id": "lab",
+       "nombre": "Laboratorio",
+       "peso": 0.1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF = 0,1·Lab + 0,2·(I1+I2+I3) + 0,3·Ex",
+    "Si faltas justificado a una interrogación, se reemplaza por el examen."
+   ]
+  }
+ },
+ {
+  "sigla": "MAT1000",
+  "nombre": "Precálculo",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "College / Ingeniería",
+  "fuente": "Normativa del curso MAT1000 2025-1",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.21,
+       "fecha": "2025-04-14",
+       "reemplazable": true
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.21,
+       "fecha": "2025-05-19",
+       "reemplazable": true
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.21,
+       "fecha": "2025-06-16",
+       "reemplazable": true
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "fecha": "2025-07-02",
+       "examen": true
+      },
+      {
+       "id": "ctr",
+       "nombre": "Controles online (7, 1% c/u)",
+       "peso": 0.07,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        },
+        {
+         "id": "c4",
+         "nombre": "Control 4"
+        },
+        {
+         "id": "c5",
+         "nombre": "Control 5"
+        },
+        {
+         "id": "c6",
+         "nombre": "Control 6"
+        },
+        {
+         "id": "c7",
+         "nombre": "Control 7"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Interrogaciones 21% c/u, examen obligatorio 30%, 7 controles online de 1% c/u."
+   ]
+  }
+ },
+ {
+  "sigla": "QIM100",
+  "nombre": "Química General",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "Ingeniería / College",
+  "fuente": "Reglamento QIM100 1S2025",
+  "def": {
+   "dudas": [
+    "La cantidad de controles puede variar: ajústala si tuviste más o menos."
+   ],
+   "combinacion": "ponderado",
+   "eximicion": {
+    "parte": "np",
+    "umbral": 5,
+    "sinRojos": true
+   },
+   "partes": [
+    {
+     "id": "np",
+     "nombre": "Nota de presentación",
+     "peso": 0.7,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.2833333333333333
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.2833333333333333
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.2833333333333333
+      },
+      {
+       "id": "ctr",
+       "nombre": "Controles de taller (promedio)",
+       "peso": 0.15,
+       "sub": [
+        {
+         "id": "c1",
+         "nombre": "Control 1"
+        },
+        {
+         "id": "c2",
+         "nombre": "Control 2"
+        },
+        {
+         "id": "c3",
+         "nombre": "Control 3"
+        },
+        {
+         "id": "c4",
+         "nombre": "Control 4"
+        },
+        {
+         "id": "c5",
+         "nombre": "Control 5"
+        },
+        {
+         "id": "c6",
+         "nombre": "Control 6"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "exp",
+     "nombre": "Examen",
+     "peso": 0.3,
+     "items": [
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 1,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NP = promedio de I1, I2, I3 × 0,85 + promedio de controles × 0,15.",
+    "NF = 0,7·NP + 0,3·Examen.",
+    "Eximición con NP ≥ 5,0 y cada interrogación ≥ 4,0."
+   ]
+  }
+ },
+ {
+  "sigla": "BIO141C",
+  "nombre": "Biología de la Célula",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "College",
+  "fuente": "Programa del curso (Canvas)",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "eximicion": {
+    "parte": "np",
+    "umbral": 5,
+    "sinRojos": true
+   },
+   "partes": [
+    {
+     "id": "np",
+     "nombre": "Nota de presentación",
+     "peso": 0.7,
+     "items": [
+      {
+       "id": "i1",
+       "nombre": "Interrogación 1",
+       "peso": 0.25
+      },
+      {
+       "id": "i2",
+       "nombre": "Interrogación 2",
+       "peso": 0.25
+      },
+      {
+       "id": "i3",
+       "nombre": "Interrogación 3",
+       "peso": 0.25
+      },
+      {
+       "id": "tal",
+       "nombre": "Controles de taller + laboratorios",
+       "peso": 0.25
+      }
+     ]
+    },
+    {
+     "id": "exp",
+     "nombre": "Examen",
+     "peso": 0.3,
+     "items": [
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 1,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NP = 25% c/interrogación + 25% talleres y laboratorios.",
+    "NF = 0,7·NP + 0,3·Examen.",
+    "Eximición: NP ≥ 5,0, interrogaciones ≥ 4,0, controles > 4,0, asistencia a taller ≥ 80% y al menos un laboratorio.",
+    "Con menos de 50% de asistencia a talleres se reprueba."
+   ]
+  }
+ },
+ {
+  "sigla": "FIL2001",
+  "nombre": "Filosofía: ¿Para qué?",
+  "universidad": "UC",
+  "periodo": "2025-1",
+  "carrera": "Formación General",
+  "fuente": "Programa 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Pruebas y análisis",
+     "peso": 0.8,
+     "items": [
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.375
+      },
+      {
+       "id": "an",
+       "nombre": "Ejercicio de análisis (pareja)",
+       "peso": 0.25
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.375
+      }
+     ]
+    },
+    {
+     "id": "pod",
+     "nombre": "Podcast (grupal)",
+     "peso": 0.2,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "pc",
+       "nombre": "Podcast",
+       "peso": 1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Prueba 1 30%, análisis 20%, Prueba 2 30%, podcast 20%.",
+    "El podcast no puede tener nota bajo 4,0: si no, se reprueba.",
+    "Se exige 75% de asistencia (si no, nota R = 3,0)."
+   ]
+  }
+ },
+ {
+  "sigla": "EAE105A",
+  "nombre": "Introducción a la Economía",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "College Ciencias Sociales",
+  "fuente": "Programa EAE105A 1S 2026",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "prof",
+       "nombre": "Porcentaje del profesor",
+       "peso": 0.1
+      },
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.2
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.2
+      },
+      {
+       "id": "p3",
+       "nombre": "Prueba 3",
+       "peso": 0.2
+      },
+      {
+       "id": "ex",
+       "nombre": "Examen",
+       "peso": 0.3,
+       "examen": true
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "10% profesor, 20% c/prueba, 30% examen.",
+    "El examen no es reprobatorio.",
+    "Hasta 3 décimas por participación en cada prueba/examen (a criterio del profesor)."
+   ]
+  }
+ },
+ {
+  "sigla": "GOB2027",
+  "nombre": "Sociedad, Epidemias y Amenazas",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Formación General",
+  "fuente": "Condiciones de evaluación GOB2027 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "ponderado",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Nota final",
+     "peso": 1,
+     "items": [
+      {
+       "id": "p1",
+       "nombre": "Prueba 1",
+       "peso": 0.2
+      },
+      {
+       "id": "p2",
+       "nombre": "Prueba 2",
+       "peso": 0.2
+      },
+      {
+       "id": "tar",
+       "nombre": "Tareas breves",
+       "peso": 0.1
+      },
+      {
+       "id": "pb",
+       "nombre": "Policy brief (grupal)",
+       "peso": 0.3
+      },
+      {
+       "id": "pf",
+       "nombre": "Presentación final (grupal)",
+       "peso": 0.2
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "No hay examen.",
+    "Bonus opcional: hasta 3 décimas a la peor prueba.",
+    "Se exige 80% de asistencia para rendir pruebas y la presentación."
+   ]
+  }
+ },
+ {
+  "sigla": "ING1004",
+  "nombre": "Desafíos de la Ingeniería",
+  "universidad": "UC",
+  "periodo": "2025-2",
+  "carrera": "Ingeniería",
+  "fuente": "Programa ING1004 2º sem 2025",
+  "def": {
+   "dudas": [],
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "ind",
+     "nombre": "Evaluación individual",
+     "peso": 0.5,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "part",
+       "nombre": "Participación en talleres",
+       "peso": 0.15
+      },
+      {
+       "id": "tar",
+       "nombre": "Tareas individuales (4)",
+       "peso": 0.6,
+       "sub": [
+        {
+         "id": "t1",
+         "nombre": "Tarea 1"
+        },
+        {
+         "id": "t2",
+         "nombre": "Tarea 2"
+        },
+        {
+         "id": "t3",
+         "nombre": "Tarea 3"
+        },
+        {
+         "id": "t4",
+         "nombre": "Tarea 4"
+        }
+       ]
+      },
+      {
+       "id": "act",
+       "nombre": "Actividades/cuestionarios en clases",
+       "peso": 0.25
+      }
+     ]
+    },
+    {
+     "id": "gru",
+     "nombre": "Evaluación grupal",
+     "peso": 0.5,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "pres",
+       "nombre": "Presentaciones (3)",
+       "peso": 0.6,
+       "sub": [
+        {
+         "id": "pr1",
+         "nombre": "Presentación 1"
+        },
+        {
+         "id": "pr2",
+         "nombre": "Presentación 2"
+        },
+        {
+         "id": "pr3",
+         "nombre": "Presentación 3"
+        }
+       ]
+      },
+      {
+       "id": "pre",
+       "nombre": "Pre-Feria",
+       "peso": 0.15
+      },
+      {
+       "id": "feria",
+       "nombre": "Feria Tecnológica",
+       "peso": 0.25
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "Individual y grupal deben aprobarse por separado (≥ 4,0); si no, la nota es el mínimo entre lo obtenido y 3,9.",
+    "La evaluación de pares afecta la nota de cada presentación."
+   ]
+  }
+ },
+ {
+  "sigla": "FIS0154",
+  "nombre": "Laboratorio de Dinámica",
+  "universidad": "UC",
+  "periodo": "2026-1",
+  "carrera": "Ingeniería",
+  "fuente": "Página \"Funcionamiento del curso\" (Canvas)",
+  "def": {
+   "dudas": [],
+   "combinacion": "minimos",
+   "partes": [
+    {
+     "id": "p",
+     "nombre": "Informes y controles",
+     "peso": 0.8,
+     "items": [
+      {
+       "id": "nc",
+       "nombre": "Controles",
+       "peso": 0.125
+      },
+      {
+       "id": "ni",
+       "nombre": "Informes",
+       "peso": 0.875
+      }
+     ]
+    },
+    {
+     "id": "evp",
+     "nombre": "Evaluación de pares",
+     "peso": 0.2,
+     "minimo": 3.95,
+     "items": [
+      {
+       "id": "np",
+       "nombre": "Promedio evaluación de pares",
+       "peso": 1
+      }
+     ]
+    }
+   ],
+   "reglas": [
+    "NF lab = 10% controles + 70% informes + 20% evaluación de pares.",
+    "La evaluación de pares es reprobatoria (promedio < 4 reprueba).",
+    "El laboratorio vale 30% de la nota final de Dinámica (FIS1514)."
+   ]
+  }
+ }
+]
