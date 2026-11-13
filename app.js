@@ -207,6 +207,11 @@ function evalNodo(r, n, fill, exVal, vals) {
   let v = null;
   if (kn.length) {
     v = sw ? s / sw : kn.reduce((a, x) => a + x.hv, 0) / kn.length;
+    if (n.promedio === 'sin_peor' && kn.length >= 2) { // se borra la peor nota una vez: (Σ cᵢ·vᵢ − peor) / (Σ cᵢ − 1), cᵢ = pesoᵢ / peso mínimo
+      const ws = kn.map(x => +x.h.peso || 0), mw = Math.min(...ws.filter(w => w > 0)) || 1;
+      const cs = ws.map(w => w / mw), sc = cs.reduce((a, b) => a + b, 0);
+      if (sc > 1) v = (kn.reduce((a, x, i) => a + cs[i] * x.hv, 0) - Math.min(...kn.map(x => x.hv))) / (sc - 1);
+    }
     if (n.bono && O(r.id)['bono_' + n.bono.id]) v = clamp(v + (+n.bono.valor || 0));
     const fail = kn.filter(x => x.h.minimo != null && x.hv < x.h.minimo);
     if (fail.length) v = Math.min(...fail.map(x => x.hv));
@@ -496,7 +501,8 @@ function arbolHTML(r, res) {
     if (esGrupo(n)) {
       const v = res.vals.get(n);
       const bono = n.bono ? `<br><label class="chk"><input type="checkbox" ${O(r.id)['bono_' + n.bono.id] ? 'checked' : ''} onchange="setOpt('${r.id}','bono_${esc(n.bono.id)}',this.checked)"> ${esc(n.bono.nombre)}</label>` : '';
-      rows += `<tr class="grp d${Math.min(d, 3)}"><td ${ind}><b>${esc(n.nombre)}</b>${min}${bono}</td><td class="w" ${tit}>${pct}</td><td class="f"></td><td><div class="calc">${fmt(v && v.v)}</div></td></tr>`;
+      const peor = n.promedio === 'sin_peor' ? ' <span class="pill info" style="padding:0 7px;font-size:11px">se borra la peor</span>' : '';
+      rows += `<tr class="grp d${Math.min(d, 3)}"><td ${ind}><b>${esc(n.nombre)}</b>${peor}${min}${bono}</td><td class="w" ${tit}>${pct}</td><td class="f"></td><td><div class="calc">${fmt(v && v.v)}</div></td></tr>`;
       n.hijos.forEach(h => fila(h, n, d + 1));
     } else rows += rowInput(r, n, d, pct + '', tit, min);
   };
@@ -659,7 +665,7 @@ function limpiarArbol(raiz) { // ids únicos, tipos y pesos válidos
   nodos(raiz).forEach(n => {
     n.id = String(n.id || uid()); while (ids.has(n.id)) n.id += '_'; ids.add(n.id);
     n.nombre = n.nombre || (esGrupo(n) ? 'Grupo' : 'Evaluación');
-    if (esGrupo(n)) { n.hijos = n.hijos || []; n.promedio = n.promedio === 'simple' ? 'simple' : 'ponderado'; }
+    if (esGrupo(n)) { n.hijos = n.hijos || []; n.promedio = ['simple', 'sin_peor'].includes(n.promedio) ? n.promedio : 'ponderado'; }
     n.peso = +n.peso || 0; if (n.minimo === undefined) n.minimo = null;
   });
 }
@@ -718,7 +724,7 @@ function bloqueHTML(n, padre, d, ef) {
   const sumP = g && n.promedio !== 'simple' ? n.hijos.reduce((a, h) => a + (+h.peso || 0), 0) : 1;
   const sumOk = !g || n.promedio === 'simple' || !n.hijos.length || Math.abs(sumP - 1) < .001;
   const pesoUI = raiz ? '' : padre.promedio === 'simple' ? `<span class="pct-s" title="Promedio simple: todas pesan igual">=${fmt2(100 / padre.hijos.length)}%</span>` : `<span class="pct-w"><input class="pct" inputmode="decimal" value="${fmt2((+n.peso || 0) * 100)}" onchange="edPeso('${n.id}',this.value)" aria-label="Peso de ${esc(n.nombre)}">%</span>`;
-  const badges = (n.examen ? '<span class="pill neutral bd">🎓 examen</span>' : '') + (n.minimo != null ? `<span class="pill warn bd">mín ${fmt2(n.minimo)}</span>` : '') + (n.bono ? '<span class="pill info bd">bono</span>' : '') + (n.fecha ? `<span class="pill neutral bd">${fdate(n.fecha)}</span>` : '');
+  const badges = (n.promedio === 'sin_peor' ? '<span class="pill info bd">borra la peor</span>' : '') + (n.examen ? '<span class="pill neutral bd">🎓 examen</span>' : '') + (n.minimo != null ? `<span class="pill warn bd">mín ${fmt2(n.minimo)}</span>` : '') + (n.bono ? '<span class="pill info bd">bono</span>' : '') + (n.fecha ? `<span class="pill neutral bd">${fdate(n.fecha)}</span>` : '');
   const fila = `<div class="blk-row" ${g ? `onclick="edSel(event,'${n.id}')"` : ''} ondragover="edOver(event,'${n.id}')" ondragleave="this.classList.remove('over')" ondrop="edDrop(event,'${n.id}','antes')">
       ${raiz ? '' : `<span class="handle" draggable="true" ondragstart="edDragStart(event,'${n.id}')" ondragend="ED.drag=null" title="Arrastra para mover">⠿</span>`}
       ${g ? `<button class="tog" onclick="edTog(event,'${n.id}')" aria-label="${abierto ? 'Cerrar' : 'Abrir'}">${abierto ? '▾' : '▸'}</button>` : ''}
@@ -746,7 +752,7 @@ function masHTML(n, padre) {
   const g = esGrupo(n), raiz = !padre;
   const grupos = nodos(ED.b.raiz).filter(x => esGrupo(x) && x.id !== n.id && !nodos(n).includes(x) && (!padre || x.id !== padre.id));
   return `<div class="mas">
-    ${g ? `<div class="row"><span>Cómo se calcula:</span><div class="seg"><button class="${n.promedio !== 'simple' ? 'on' : ''}" onclick="edSet('${n.id}','promedio','ponderado')">Con pesos</button><button class="${n.promedio === 'simple' ? 'on' : ''}" onclick="edSet('${n.id}','promedio','simple')">Promedio simple</button></div></div>` : `
+    ${g ? `<div class="row"><span>Cómo se calcula:</span><div class="seg"><button class="${n.promedio === 'ponderado' || !n.promedio ? 'on' : ''}" onclick="edSet('${n.id}','promedio','ponderado')">Con pesos</button><button class="${n.promedio === 'simple' ? 'on' : ''}" onclick="edSet('${n.id}','promedio','simple')">Promedio simple</button><button class="${n.promedio === 'sin_peor' ? 'on' : ''}" onclick="edSet('${n.id}','promedio','sin_peor')" title="Con pesos, pero se borra la peor nota una vez">Borrar la peor</button></div></div>` : `
       <div class="row"><label class="chk">Fecha <input type="date" class="inp" style="width:auto" value="${n.fecha || ''}" onchange="edSet('${n.id}','fecha',this.value||null)"></label></div>
       <div class="row"><label class="chk"><input type="checkbox" ${n.examen ? 'checked' : ''} onchange="edExamen('${n.id}',this.checked)"> Es el examen final</label>
       <label class="chk"><input type="checkbox" ${n.reemplazable ? 'checked' : ''} onchange="edSet('${n.id}','reemplazable',this.checked)"> Si falto justificado, vale la nota del examen</label></div>`}
