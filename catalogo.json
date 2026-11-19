@@ -1725,55 +1725,131 @@
   "carrera": "Ingeniería Comercial",
   "fuente": "Programa Econometría 2026-2",
   "def": {
+   "version": 2,
+   "eximicion": null,
    "dudas": [],
-   "combinacion": "ponderado",
-   "partes": [
-    {
-     "id": "p",
-     "nombre": "Nota final",
-     "peso": 1,
-     "items": [
-      {
-       "id": "cr",
-       "nombre": "Control de repaso",
-       "peso": 0.05
-      },
-      {
-       "id": "p1",
-       "nombre": "Prueba 1",
-       "peso": 0.2
-      },
-      {
-       "id": "p2",
-       "nombre": "Prueba 2",
-       "peso": 0.2
-      },
-      {
-       "id": "ex",
-       "nombre": "Examen",
-       "peso": 0.25,
-       "examen": true
-      },
-      {
-       "id": "t1",
-       "nombre": "Tarea 1 (grupal + control)",
-       "peso": 0.1
-      },
-      {
-       "id": "t2",
-       "nombre": "Tarea 2 (grupal + control)",
-       "peso": 0.1
-      },
-      {
-       "id": "part",
-       "nombre": "Participación",
-       "peso": 0.1
-      }
-     ]
-    }
-   ],
+   "raiz": {
+    "id": "raiz",
+    "nombre": "Nota final",
+    "tipo": "grupo",
+    "promedio": "ponderado",
+    "hijos": [
+     {
+      "id": "ind",
+      "nombre": "Nota individual (para aprobar)",
+      "peso": 0.9,
+      "tipo": "grupo",
+      "promedio": "ponderado",
+      "minimo": 3.95,
+      "hijos": [
+       {
+        "id": "cr",
+        "nombre": "Control de repaso",
+        "peso": 0.05,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "p1",
+        "nombre": "Prueba 1",
+        "peso": 0.2,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "p2",
+        "nombre": "Prueba 2",
+        "peso": 0.2,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "c1",
+        "nombre": "Control tarea 1",
+        "peso": 0.05,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "c2",
+        "nombre": "Control tarea 2",
+        "peso": 0.05,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "part",
+        "nombre": "Participación",
+        "peso": 0.1,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "ex",
+        "nombre": "Examen",
+        "peso": 0.25,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": true,
+        "reemplazable": false,
+        "minimo": null
+       }
+      ]
+     },
+     {
+      "id": "grp",
+      "nombre": "Tareas grupales",
+      "peso": 0.1,
+      "tipo": "grupo",
+      "promedio": "ponderado",
+      "minimo": null,
+      "hijos": [
+       {
+        "id": "t1",
+        "nombre": "Tarea 1 grupal",
+        "peso": 0.05,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       },
+       {
+        "id": "t2",
+        "nombre": "Tarea 2 grupal",
+        "peso": 0.05,
+        "tipo": "nota",
+        "fecha": null,
+        "examen": false,
+        "reemplazable": false,
+        "minimo": null
+       }
+      ]
+     }
+    ]
+   },
    "reglas": [
-    "Control de repaso 5%, pruebas 20% c/u, examen 25%, tareas 10% c/u (5% entrega grupal + 5% control), participación 10%.",
+    "Control de repaso 5%, pruebas 20% c/u, examen 25%, tareas 10% c/u (5% entrega grupal + 5% control individual), participación 10%.",
+    "Para aprobar cuenta solo la nota individual (control de repaso, pruebas, controles de tareas, participación y examen): debe ser ≥ 4,0. Si no, esa es tu nota final.",
+    "Las entregas grupales de las tareas (10%) solo se suman al promedio una vez aprobada la parte individual.",
     "La participación parte del promedio de controles y puede subir hasta 40% (tope 7,0)."
    ]
   }
