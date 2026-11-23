@@ -322,7 +322,7 @@ const porConfirmar = r => (r.dudas && r.dudas.length) || r.porConfirmar;
 
 /* ============================================================ NAVEGACIÓN */
 const app = $('app');
-window.go = h => { if (location.hash.slice(1) === h) render(); else location.hash = h || ''; if (!h) render(); };
+window.go = h => { if (backPend) { hashPend = h || ''; return; } if (location.hash.slice(1) === h) render(); else location.hash = h || ''; if (!h) render(); };
 window.addEventListener('hashchange', render);
 function render() {
   const tb = $('tbHome'); if (tb) tb.classList.toggle('on', !location.hash.slice(1));
@@ -565,8 +565,15 @@ function lineChart(el, pts, { ref, mark }) {
 }
 
 /* ============================================================ MODAL */
-function openModal(h) { if (!h.includes('class="ed"')) $('modal').classList.remove('full'); $('modal').innerHTML = `<button class="btn ghost x" onclick="closeModal()" aria-label="Cerrar">✕</button>` + h; $('modalBg').style.display = 'flex'; }
-window.closeModal = () => { $('modalBg').style.display = 'none'; $('modal').classList.remove('full'); detenerDictado(); };
+function openModal(h) { if (!h.includes('class="ed"')) $('modal').classList.remove('full'); $('modal').innerHTML = `<button class="btn ghost x" onclick="closeModal()" aria-label="Cerrar">✕</button>` + h; $('modalBg').style.display = 'flex';
+  if (!(history.state && history.state.modal)) history.pushState({ modal: 1 }, ''); }
+function ocultarModal() { $('modalBg').style.display = 'none'; $('modal').classList.remove('full'); detenerDictado(); }
+// El botón "atrás" de Android cierra la ventana abierta en vez de salir de la app
+let backPend = false, hashPend = null;
+window.closeModal = () => { ocultarModal(); if (history.state && history.state.modal) { backPend = true; history.back(); } };
+addEventListener('popstate', () => {
+  if (backPend) { backPend = false; if (hashPend != null) { const h = hashPend; hashPend = null; go(h); } return; }
+  if ($('modalBg').style.display === 'flex') ocultarModal(); });
 $('modalBg').addEventListener('click', e => { if (e.target === $('modalBg')) closeModal(); });
 
 /* ---------- Catálogo ---------- */
@@ -942,5 +949,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 }
 addEventListener('pagehide', () => api.flush());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') api.flush(); });
-let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => USER && render(), 150); });
+// Solo redibujar si cambia el ANCHO (rotar pantalla). En Android, abrir el teclado cambia el alto
+// y antes eso redibujaba la página y cerraba el teclado.
+let rz, anchoPrev = innerWidth; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => {
+  if (innerWidth === anchoPrev) return; anchoPrev = innerWidth;
+  const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
+  USER && render(); }, 150); });
+// Con el teclado abierto, mantener visible el campo que se está escribiendo
+document.addEventListener('focusin', e => { if (/INPUT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox') setTimeout(() => { try { e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) { } }, 350); });
 (async () => { try { await api.init(); } catch (e) { MODE = 'demo'; demo.load(); USER = { id: 'demo' }; } boot(); })();
